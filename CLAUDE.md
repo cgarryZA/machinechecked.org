@@ -22,8 +22,8 @@ As things are suggested and agreed (by the owner, or in a review the owner accep
 as a GitHub issue in the repository it affects (`cgarryZA/MachineChecked`,
 `cgarryZA/machinechecked.org`, or a downstream project's own repository): one issue per item, saying
 what, why, and when it is done, with a label for its kind (`bug`, `enhancement`, `cleanup`,
-`docs`). The owner's GitHub Projects board is the kanban: its auto-add workflows pick up new
-issues from each repository (sessions cannot use the Projects API). Log first; do not start an
+`docs`). Each repository has its own GitHub Projects board as its kanban, whose auto-add
+workflow picks up the repository's new issues (sessions cannot use the Projects API). Log first; do not start an
 issue's work until it is agreed to be worked on, and close it with the commit that does it
 (`Fixes #n`). Issues in public repositories follow the privacy rules above: nothing of a private
 project, written generically.
