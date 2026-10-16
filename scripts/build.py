@@ -66,7 +66,7 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
         + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls) + "</urlset>\n")
     (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {ORIGIN}/sitemap.xml\n")
     shutil.copyfile(ROOT / "llms.txt", out / "llms.txt")
-    for need in ("index.html", "read/index.html", "demo/index.html", "llms.txt"):
+    for need in ("index.html", "read/index.html", "read/theme.css", "demo/index.html", "llms.txt"):
         if not (out / need).is_file():
             sys.exit(f"missing {need}")
     print(f"site written to {out}: {len(urls)} page(s) in the sitemap")

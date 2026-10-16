@@ -105,6 +105,7 @@ def test_the_build_writes_each_paper_page_in_the_reader_s_format(tmp_path, monke
     reader = tmp_path / "reader"
     (reader / "assets").mkdir(parents=True)
     (reader / "index.html").write_text(READER)
+    (reader / "theme.css").write_text(":root { --bg: #fff; }")
     monkeypatch.setattr(build, "ROOT", ROOT)
     out = tmp_path / "out"
     build.build(out, reader)

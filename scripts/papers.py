@@ -104,7 +104,7 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
 <title>{e(title)}</title>
 <meta name="description" content="{e(description)}">
 <link rel="canonical" href="{e(canonical)}">
-{f'<noscript><link rel="stylesheet" href="{up}assets/site.css"></noscript>' if app else f'<link rel="stylesheet" href="{up}assets/site.css">'}
+{f'<noscript><link rel="stylesheet" href="/read/theme.css"><link rel="stylesheet" href="{up}assets/site.css"><style>#app {{ display: none; }}</style></noscript>' if app else f'<link rel="stylesheet" href="/read/theme.css"><link rel="stylesheet" href="{up}assets/site.css">'}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%232f6f73' stroke-width='3'/%3E%3Cpath d='M20 20l8 8' stroke='%232f6f73' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 {ld}{app}</head>
 <body>

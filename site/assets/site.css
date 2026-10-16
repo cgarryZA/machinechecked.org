@@ -1,18 +1,4 @@
-/* The paper pages' style: the landing page's colours and type, in light and dark. */
-:root {
-  --bg: #f7f5f0; --surface: #ffffff; --surface-2: #f0ede6; --text: #1d1d1b; --muted: #5f5d57;
-  --faint: #8d8a82; --border: #dcd8ce; --accent: #2f6f73; --accent-soft: #d9ebe9;
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: "JuliaMono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161817; --surface: #1f2221; --surface-2: #272b2a; --text: #e8e6e1; --muted: #b0ada6;
-    --faint: #85827b; --border: #3a3f3d; --accent: #6fb3b5; --accent-soft: #24393a; color-scheme: dark;
-  }
-}
+/* The paper pages' layout. Their colours and type are /read/theme.css, the reader's. */
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans); }
 a { color: var(--accent); }
