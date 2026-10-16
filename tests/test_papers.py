@@ -113,3 +113,10 @@ def test_tex_in_titles_reads_as_text(tmp_path):
     papers.write(out, papers.load(_registry(tmp_path / "reg", p)))
     assert "Sets in ℝ³" in (out / "papers" / "index.html").read_text()
     assert "<title>Sets in ℝ³ — MachineChecked</title>" in (out / "papers" / "2601.01234" / "index.html").read_text()
+
+
+def test_each_paper_has_a_badge_saying_what_is_listed(tmp_path):
+    out = tmp_path / "out"
+    papers.write(out, papers.load(_registry(tmp_path / "reg", PAPER)))
+    svg = (out / "papers" / "2601.01234" / "badge.svg").read_text()
+    assert svg.startswith("<svg") and "Audit published" in svg and "verified" not in svg.lower()

@@ -315,6 +315,22 @@ def index_page(papers: list[dict]) -> str:
                 body, f"{ORIGIN}/papers/", depth=1)
 
 
+def badge(text: str) -> str:
+    """A README badge: "MachineChecked" and what the site lists for the paper. It says how far
+    the site's knowledge of the paper goes, never that anything is verified."""
+    left, right = "MachineChecked", text
+    lw, rw = 8 + 7 * len(left), 10 + 6 * len(right)
+    colour = "#2e7d4f" if text == "Audit published" else "#2f6f73"
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{lw + rw}" height="20" role="img" aria-label="{e(left)}: {e(right)}">
+<title>{e(left)}: {e(right)}</title>
+<rect width="{lw}" height="20" fill="#555"/><rect x="{lw}" width="{rw}" height="20" fill="{colour}"/>
+<g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">
+<text x="{lw / 2}" y="14" text-anchor="middle">{e(left)}</text>
+<text x="{lw + rw / 2}" y="14" text-anchor="middle">{e(right)}</text></g>
+</svg>
+"""
+
+
 def write(out: Path, papers: list[dict], reader_index: str | None = None) -> list[str]:
     """The paper pages and the list, under `out/papers/`; their addresses. With the reader's
     built index.html, each paper page opens in the reader."""
@@ -326,5 +342,6 @@ def write(out: Path, papers: list[dict], reader_index: str | None = None) -> lis
         d = out / "papers" / slug(p["id"])
         d.mkdir(parents=True, exist_ok=True)
         (d / "index.html").write_text(paper_page(p, reader), encoding="utf-8")
+        (d / "badge.svg").write_text(badge(level(p)), encoding="utf-8")
         urls.append(f"{ORIGIN}/papers/{slug(p['id'])}/")
     return urls
