@@ -114,6 +114,9 @@ def test_the_build_writes_each_paper_page_in_the_reader_s_format(tmp_path, monke
         index = json.loads((d / "data" / "index.json").read_text())
         assert index["mode"] == "paper" and index["paper"]["id"] == p["id"]
         assert index["projects"] == [f["repository"] for f in p["formalisations"]]
+        # The panel's report link is the one the static page has.
+        assert [f["report_url"] for f in index["paper"]["formalisations"]] == \
+            [papers.report_url(p, f) for f in p["formalisations"]]
         assert (d / "index.html").is_file() and (d / "badge.svg").is_file()
 
 

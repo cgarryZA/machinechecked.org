@@ -49,4 +49,5 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 author's name; the page opens it in the reader.
 
 To update the reader, set `TOOL_VERSION` to a newer MachineChecked commit. The landing page's
-screenshots are made by `scripts/site_preview.mjs` in the MachineChecked repository.
+screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from the built site's
+reader and an exported audit; how to run it is at the top of the script.

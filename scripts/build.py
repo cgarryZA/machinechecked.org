@@ -55,7 +55,10 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
     # it replaces the page's directory).
     for p in ps:
         found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
-        write_paper_site(out / "papers" / papers.slug(p["id"]), p,
+        # The reader's panel offers each listing's report link as the static page builds it.
+        entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
+                                         for f in p["formalisations"]]}
+        write_paper_site(out / "papers" / papers.slug(p["id"]), entry,
                          found["claims"] if found else [], found and found["page_size"],
                          claims.view_pdf(p))
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
