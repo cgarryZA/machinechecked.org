@@ -17,22 +17,42 @@ from urllib.parse import quote
 ORIGIN = "https://machinechecked.org"
 
 
-def load(registry: Path) -> list[dict]:
-    """Every paper in the registry, validated against its schema."""
+def _read(path: Path, schema: dict) -> dict:
     import jsonschema
+    d = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        jsonschema.validate(d, schema)
+    except jsonschema.ValidationError as e:
+        raise SystemExit(f"{path.name}: {e.message} (at {'/'.join(map(str, e.path))})")
+    return d
+
+
+def load(registry: Path) -> list[dict]:
+    """Every paper in the registry, validated against its schema: the maintained entries
+    (`papers/`) merged with those the discovery job found (`discovered/`). A maintained entry's
+    fields win; a repository listed in both keeps the maintained record and its audits."""
     schema = json.loads((registry / "schema.json").read_text(encoding="utf-8"))
-    papers, seen = [], set()
+    papers: dict[str, dict] = {}
     for p in sorted((registry / "papers").glob("*.json")):
-        d = json.loads(p.read_text(encoding="utf-8"))
-        try:
-            jsonschema.validate(d, schema)
-        except jsonschema.ValidationError as e:
-            raise SystemExit(f"{p.name}: {e.message} (at {'/'.join(map(str, e.path))})")
-        if d["id"] in seen:
+        d = _read(p, schema)
+        if d["id"] in papers:
             raise SystemExit(f"{p.name}: {d['id']} is registered twice")
-        seen.add(d["id"])
-        papers.append(d)
-    return papers
+        papers[d["id"]] = d
+    for p in sorted((registry / "discovered").glob("*.json")) if (registry / "discovered").is_dir() else []:
+        d = _read(p, schema)
+        if d["id"] not in papers:
+            papers[d["id"]] = d
+            continue
+        have = {f["repository"].lower() for f in papers[d["id"]]["formalisations"]}
+        papers[d["id"]]["formalisations"] += [f for f in d["formalisations"]
+                                              if f["repository"].lower() not in have]
+    delisted = registry / "delisted.json"
+    gone = {(x["paper"], x["repository"].lower())
+            for x in (json.loads(delisted.read_text()) if delisted.exists() else [])}
+    for d in papers.values():
+        d["formalisations"] = [f for f in d["formalisations"]
+                               if (d["id"], f["repository"].lower()) not in gone]
+    return list(papers.values())
 
 
 def slug(paper_id: str) -> str:
@@ -103,7 +123,17 @@ def stated(f: dict) -> str:
     return words + (f" {e(s['note'])}" if s.get("note") and s["source"] == "curated" else "")
 
 
-def formalisation(f: dict) -> str:
+def report_url(paper: dict, f: dict) -> str:
+    """A pre-filled issue on the site's repository about one listing."""
+    title = f"Listing: {f['repository']} for {paper['id']}"
+    body = (f"**Paper:** {paper['title']} (`{paper['id']}`)\n**Repository:** {f['repository']} at "
+            f"`{f['commit'][:12]}`\n\n### What is wrong with this listing\n\n"
+            "<!-- For example: the repository does not formalise this paper, or it is spam. -->\n")
+    return ("https://github.com/cgarryZA/machinechecked.org/issues/new?title="
+            + quote(title) + "&body=" + quote(body))
+
+
+def formalisation(f: dict, paper: dict) -> str:
     repo, commit = f["repository"], f["commit"]
     url = f"https://github.com/{repo}/tree/{commit}"
     parts = [f'<div class="card"><h3><a href="{e(url)}">{e(repo)}</a> '
@@ -126,6 +156,7 @@ def formalisation(f: dict) -> str:
     else:
         parts.append('<p class="small muted">No audit of this repository has been published yet, so '
                      "this page says nothing about what Lean establishes for the paper's claims.</p>")
+    parts.append(f'<p class="small"><a href="{e(report_url(paper, f))}">Report this listing</a></p>')
     parts.append("</div>")
     return "\n".join(parts)
 
@@ -154,7 +185,7 @@ def paper_page(paper: dict) -> str:
     if len(fs) > 1:
         body.append('    <p class="small muted">Each is a separate source of evidence; their results are '
                     "never combined into one verdict.</p>")
-    body += [formalisation(f) for f in fs] or ['    <p class="muted">None listed.</p>']
+    body += [formalisation(f, paper) for f in fs] or ['    <p class="muted">None listed.</p>']
     if paper.get("related"):
         body.append("    <h2>Related</h2><ul>")
         for r in paper["related"]:

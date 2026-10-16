@@ -58,3 +58,28 @@ def test_a_repository_without_an_audit_says_nothing_about_lean(tmp_path):
     papers.write(out, papers.load(_registry(tmp_path / "reg", p)))
     page = (out / "papers" / "2601.01234" / "index.html").read_text()
     assert "Lean repository linked" in page and "says nothing about what Lean establishes" in page
+
+
+def test_discovered_entries_merge_and_delisting_removes_one_listing(tmp_path):
+    reg = _registry(tmp_path / "reg", PAPER)
+    (reg / "discovered").mkdir()
+    found = {**PAPER, "title": "Found title", "formalisations": [
+        {"repository": "someone/proj", "commit": "c" * 40, "stated_by": {"source": "formalization.yaml"}},
+        {"repository": "other/proj", "commit": "d" * 40, "stated_by": {"source": "formalization.yaml"}}]}
+    (reg / "discovered" / "2601.01234.json").write_text(json.dumps(found))
+    [p] = papers.load(reg)
+    # The maintained entry wins: its title, and its record (with the audit) of someone/proj.
+    assert p["title"] == PAPER["title"]
+    assert [f["repository"] for f in p["formalisations"]] == ["someone/proj", "other/proj"]
+    assert p["formalisations"][0].get("audits")
+    (reg / "delisted.json").write_text(json.dumps(
+        [{"paper": "arxiv:2601.01234", "repository": "Other/Proj", "reason": "spam"}]))
+    [p] = papers.load(reg)
+    assert [f["repository"] for f in p["formalisations"]] == ["someone/proj"]
+
+
+def test_every_listing_can_be_reported(tmp_path):
+    out = tmp_path / "out"
+    papers.write(out, papers.load(_registry(tmp_path / "reg", PAPER)))
+    page = (out / "papers" / "2601.01234" / "index.html").read_text()
+    assert "machinechecked.org/issues/new?title=Listing%3A%20someone/proj" in page

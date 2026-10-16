@@ -30,7 +30,16 @@ python3 scripts/build.py --out _site
 The `Site` workflow runs the tests (`tests/`) and does this on every push, and deploys `main` to
 GitHub Pages.
 
-## Adding a paper
+## How papers get listed
+
+Every day the `Discover` workflow (`scripts/discover.py`) searches GitHub for repositories whose
+`formalization.yaml` names an arXiv paper among the sources they formalize, checks that the
+arXiv identifier exists and that the repository is a Lean project, and rewrites
+`registry/discovered/`. Nobody approves these listings; each says it is the repository's own
+statement, and each has a "Report this listing" link. To remove one, add
+`{"paper": "arxiv:…", "repository": "owner/repo", "reason": "…"}` to `registry/delisted.json`.
+
+## Adding a paper by hand
 
 Add `registry/papers/<name>.json` following `registry/schema.json`. An arXiv paper is listed when
 a repository's `formalization.yaml` names it as a source it formalizes (`listing: "arxiv"`,

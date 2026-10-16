@@ -1,0 +1,43 @@
+name: Discover
+
+# Daily: finds Lean repositories whose formalization.yaml names an arXiv paper they formalize
+# (scripts/discover.py), rewrites registry/discovered/, and when that changed, commits it and
+# starts the Site workflow to publish it. Reads metadata only; runs nothing from a repository.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: discover
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml jsonschema
+      - name: Find repositories and list their papers
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/discover.py
+      - name: The registry is still valid
+        run: python -c "import sys; sys.path.insert(0, 'scripts'); import papers; print(len(papers.load(__import__('pathlib').Path('registry'))), 'papers')"
+      - name: Commit and publish when the listings changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -A registry/discovered
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git -c user.name="machinechecked-discovery" -c user.email="discovery@machinechecked.org" \
+            commit -m "Discovered listings: $(ls registry/discovered/*.json 2>/dev/null | wc -l) paper(s)"
+          git push
+          gh workflow run pages.yml --ref main
