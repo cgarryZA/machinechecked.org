@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2601.22142",
+ "title": "Superdiffusion and anomalous regularization in self-similar random incompressible flows",
+ "authors": [
+  "Scott Armstrong",
+  "Ahmed Bou-Rabee",
+  "Tuomo Kuusi"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2601.22142"
+ },
+ "formalisations": [
+  {
+   "repository": "scottnarmstrong/Superdiffusion",
+   "commit": "7f20476385d4af418f110303085ad0740c9eba46",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

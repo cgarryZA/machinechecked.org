@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:1908.06058",
+ "title": "Lower bounds in the polynomial Szemerédi theorem",
+ "authors": [
+  "Khalid Younis"
+ ],
+ "year": 2019,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1908.06058"
+ },
+ "formalisations": [
+  {
+   "repository": "JD-Jones-ASES/ry-lean",
+   "commit": "a4edb0ea61422813cfd23b319cb28c62f09129bf",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

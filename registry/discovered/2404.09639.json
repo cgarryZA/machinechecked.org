@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2404.09639",
+ "title": "Improved Exponent for Marton's Conjecture in $\\mathbb{F}_2^n$",
+ "authors": [
+  "Jyun-Jie Liao"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2404.09639"
+ },
+ "formalisations": [
+  {
+   "repository": "teorth/pfr",
+   "commit": "ebe2d96230b1abb190f74592aace441a0f10fe09",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

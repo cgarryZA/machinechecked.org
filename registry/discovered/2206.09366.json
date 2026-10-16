@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2206.09366",
+ "title": "Large sumsets from medium-sized subsets",
+ "authors": [
+  "Bela Bollobas",
+  "Imre Leader",
+  "Marius Tiba"
+ ],
+ "year": 2022,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2206.09366"
+ },
+ "formalisations": [
+  {
+   "repository": "gdahia/DenseSetsWithoutLargeSumsets",
+   "commit": "5f4b9150c3d6a04220a4785fe3a85ff6f5d82e2a",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}
