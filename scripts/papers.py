@@ -69,9 +69,33 @@ def reader_url(audit_url: str) -> str:
     return "/read/?audit=" + quote(audit_url, safe="")
 
 
+def reader_head(reader_index: str) -> str:
+    """The reader's stylesheet and script tags, from its built index.html, pointing at /read/."""
+    import re
+    tags = re.findall(r'<(?:script|link)\b[^>]*(?:src|href)="\./assets/[^"]+"[^>]*>(?:</script>)?',
+                      reader_index)
+    if not tags:
+        raise SystemExit("the reader's index.html names no assets")
+    return "\n".join(t.replace('"./assets/', '"/read/assets/') for t in tags)
+
+
+def inline_json(data) -> str:
+    """JSON safe inside a <script> element."""
+    return (json.dumps(data, ensure_ascii=False).replace("<", "\\u003c")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
 def page(title: str, description: str, body: str, canonical: str, jsonld: dict | None = None,
-         depth: int = 2) -> str:
+         depth: int = 2, reader: str | None = None, paper: dict | None = None) -> str:
+    """A page of the site. With `reader` (the reader's asset tags) and `paper`, the page is the
+    reader showing that paper; its text stays in the page, shown only without JavaScript, so
+    that search engines and language models read it."""
     up = "../" * depth
+    app = ""
+    if reader and paper is not None:
+        app = (f"<script>window.__MACHINECHECKED_PAPER__ = {inline_json(paper)};"
+               "document.documentElement.classList.add('reader');</script>\n"
+               "<style>html.reader body > .wrap { display: none; }</style>\n" + reader + "\n")
     ld = ""
     if jsonld:
         data = json.dumps(jsonld, ensure_ascii=False).replace("</", "<\\/")
@@ -84,10 +108,11 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
 <title>{e(title)}</title>
 <meta name="description" content="{e(description)}">
 <link rel="canonical" href="{e(canonical)}">
-<link rel="stylesheet" href="{up}assets/site.css">
+{f'<noscript><link rel="stylesheet" href="{up}assets/site.css"></noscript>' if app else f'<link rel="stylesheet" href="{up}assets/site.css">'}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%232f6f73' stroke-width='3'/%3E%3Cpath d='M20 20l8 8' stroke='%232f6f73' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-{ld}</head>
+{ld}{app}</head>
 <body>
+{'<div id="app"></div>' if app else ''}
 <div class="wrap">
   <header class="top">
     <a class="brand" href="{up}"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20 20l8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>MachineChecked</a>
@@ -161,7 +186,7 @@ def formalisation(f: dict, paper: dict) -> str:
     return "\n".join(parts)
 
 
-def paper_page(paper: dict) -> str:
+def paper_page(paper: dict, reader: str | None = None) -> str:
     s = slug(paper["id"])
     links = paper["links"]
     ident = (f'arXiv:{e(paper["id"].split(":", 1)[1])}' if paper["id"].startswith("arxiv:")
@@ -205,7 +230,61 @@ def paper_page(paper: dict) -> str:
     desc = (f"{paper['title']}: its Lean formalisations and published audits on MachineChecked. "
             f"{level(paper)}.")
     return page(f"{paper['title']} — MachineChecked", desc, "\n".join(body),
-                f"{ORIGIN}/papers/{s}/", jsonld)
+                f"{ORIGIN}/papers/{s}/", jsonld, reader=reader, paper=paper)
+
+
+# Search on /papers/: the listed papers filter as one types; a query that is an arXiv identifier,
+# or finds too few listed papers, is also looked up in OpenAlex, whose results are shown as not
+# listed (no Lean repository has said it formalises them). Nothing is added to the registry, and
+# every string is set as text.
+SEARCH_JS = r"""
+(() => {
+  const q = document.getElementById("q"), found = document.getElementById("found");
+  const rows = [...document.querySelectorAll("#listed li")];
+  let timer = null, seq = 0;
+  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+  const link = (href, text) => { const a = el("a", null, text); a.href = href; a.rel = "noopener"; return a; };
+  function arxiv(s) { const m = s.match(/(?:arxiv[:\/\s]*|abs\/)?(\d{4}\.\d{4,5})(?:v\d+)?/i); return m ? m[1] : null; }
+  async function external(query, n) {
+    const mine = ++seq;
+    found.replaceChildren();
+    const id = arxiv(query);
+    if (id && !rows.some((r) => r.textContent.includes(id) || r.querySelector("a").getAttribute("href").startsWith(id))) {
+      const p = el("p", "muted small");
+      p.append("arXiv:" + id + " is not listed: no Lean repository on GitHub has said in its formalization.yaml that it formalises it. ");
+      p.append(link("https://arxiv.org/abs/" + id, "Open it on arXiv"));
+      found.append(p);
+    }
+    if (n >= 3 || query.length < 4) return;
+    try {
+      const r = await fetch("https://api.openalex.org/works?per-page=5&select=display_name,publication_year,authorships,doi,ids&search=" + encodeURIComponent(query));
+      if (!r.ok || mine !== seq) return;
+      const d = await r.json();
+      if (!d.results?.length) return;
+      found.append(el("p", "small muted", "Not listed (from OpenAlex): no Lean formalisation of these is known here."));
+      const ul = el("ul", "papers");
+      for (const w of d.results) {
+        const li = el("li");
+        const href = w.doi || (w.ids && w.ids.openalex) || "#";
+        li.append(link(href, w.display_name || "(untitled)"));
+        const who = (w.authorships || []).slice(0, 4).map((a) => a.author && a.author.display_name).filter(Boolean).join(", ");
+        li.append(el("span", "muted", " — " + who + (w.publication_year ? " · " + w.publication_year : "")));
+        li.append(el("span", "pill", "Not listed"));
+        ul.append(li);
+      }
+      found.append(ul);
+    } catch { /* OpenAlex unreachable: the listed papers still filter */ }
+  }
+  q.addEventListener("input", () => {
+    const s = q.value.trim().toLowerCase();
+    let n = 0;
+    for (const r of rows) { const hit = !s || r.textContent.toLowerCase().includes(s) || r.querySelector("a").getAttribute("href").includes(s); r.hidden = !hit; n += hit; }
+    clearTimeout(timer);
+    if (!s) { found.replaceChildren(); return; }
+    timer = setTimeout(() => external(q.value.trim(), n), 400);
+  });
+})();
+"""
 
 
 def index_page(papers: list[dict]) -> str:
@@ -219,23 +298,31 @@ def index_page(papers: list[dict]) -> str:
     <p class="muted">Papers with Lean formalisations, and the audits published of them. A listing
       says what a repository states; an audit says what its author recorded. MachineChecked
       endorses neither.</p>
-    <ul class="papers">
+    <form class="search" role="search" onsubmit="return false">
+      <input id="q" type="search" placeholder="Search by title, author or arXiv identifier"
+        aria-label="Search papers" autocomplete="off">
+    </form>
+    <div id="found" aria-live="polite"></div>
+    <ul class="papers" id="listed">
 {chr(10).join(rows) or '<li class="muted">None yet.</li>'}
     </ul>
-  </main>"""
+  </main>
+  <script>{SEARCH_JS}</script>"""
     return page("Papers — MachineChecked",
                 "Mathematical papers with Lean formalisations, and published MachineChecked audits.",
                 body, f"{ORIGIN}/papers/", depth=1)
 
 
-def write(out: Path, papers: list[dict]) -> list[str]:
-    """The paper pages and the list, under `out/papers/`; their addresses."""
+def write(out: Path, papers: list[dict], reader_index: str | None = None) -> list[str]:
+    """The paper pages and the list, under `out/papers/`; their addresses. With the reader's
+    built index.html, each paper page opens in the reader."""
+    reader = reader_head(reader_index) if reader_index else None
     urls = [f"{ORIGIN}/papers/"]
     (out / "papers").mkdir(parents=True, exist_ok=True)
     (out / "papers" / "index.html").write_text(index_page(papers), encoding="utf-8")
     for p in papers:
         d = out / "papers" / slug(p["id"])
         d.mkdir(parents=True, exist_ok=True)
-        (d / "index.html").write_text(paper_page(p), encoding="utf-8")
+        (d / "index.html").write_text(paper_page(p, reader), encoding="utf-8")
         urls.append(f"{ORIGIN}/papers/{slug(p['id'])}/")
     return urls

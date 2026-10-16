@@ -69,6 +69,12 @@ def search(token: str) -> tuple[set[str], dict]:
     return found, stats
 
 
+def short(s: str, n: int = 200) -> str:
+    """At most `n` characters, cut at a word with an ellipsis."""
+    s = " ".join(s.split())
+    return s if len(s) <= n else s[:n - 1].rsplit(" ", 1)[0] + "…"
+
+
 def declarations(repo: str, token: str) -> list[dict]:
     """The arXiv papers a repository's formalization.yaml says it formalizes, at its current
     commit, if it is a Lean project; otherwise nothing."""
@@ -97,7 +103,7 @@ def declarations(repo: str, token: str) -> list[dict]:
         m = ARXIV_ID.search(" ".join(str(s.get(k, "")) for k in ("id", "url", "arxiv", "doi")))
         if m:
             out.append({"arxiv": m.group(1), "repository": info["full_name"], "commit": sha,
-                        "review_status": str(review.get("status"))[:60] if review.get("status")
+                        "review_status": short(str(review["status"])) if review.get("status")
                         else None})
     return out
 

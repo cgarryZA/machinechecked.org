@@ -83,3 +83,21 @@ def test_every_listing_can_be_reported(tmp_path):
     papers.write(out, papers.load(_registry(tmp_path / "reg", PAPER)))
     page = (out / "papers" / "2601.01234" / "index.html").read_text()
     assert "machinechecked.org/issues/new?title=Listing%3A%20someone/proj" in page
+
+
+READER = '<script type="module" crossorigin src="./assets/index-x.js"></script>\n<link rel="stylesheet" crossorigin href="./assets/index-y.css">'
+
+
+def test_a_paper_page_is_the_reader_with_its_text_kept(tmp_path):
+    p = {**PAPER, "title": "A </script><script>alert(1)</script> claim"}
+    out = tmp_path / "out"
+    papers.write(out, papers.load(_registry(tmp_path / "reg", p)), READER)
+    page = (out / "papers" / "2601.01234" / "index.html").read_text()
+    assert 'src="/read/assets/index-x.js"' in page and '<div id="app"></div>' in page
+    assert "window.__MACHINECHECKED_PAPER__ = " in page
+    # The registry's text cannot close the inline script.
+    script = page.split("window.__MACHINECHECKED_PAPER__ = ", 1)[1].split("</script>", 1)[0]
+    assert "<" not in script
+    assert json.loads(script.rstrip().rsplit(";document", 1)[0])["title"] == p["title"]
+    # The text is still in the page, for readers without JavaScript and for search engines.
+    assert "&lt;/script&gt;" in page and "Lean formalisations" in page

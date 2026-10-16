@@ -46,7 +46,8 @@ def build(out: Path, reader: Path) -> None:
     shutil.copytree(ROOT / "site", out)
     shutil.copytree(reader, out / "read")
     import papers
-    papers.write(out, papers.load(ROOT / "registry"))
+    papers.write(out, papers.load(ROOT / "registry"),
+                 (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'

@@ -41,7 +41,7 @@
           "stated_by": {"type": "object", "additionalProperties": false, "required": ["source"],
                         "properties": {"source": {"enum": ["formalization.yaml", "curated"]},
                                        "file": {"type": "string"}, "note": {"type": "string", "maxLength": 300}}},
-          "review_status": {"type": "string", "maxLength": 60, "description": "The project's own description of its review (formalization.yaml), shown as such."},
+          "review_status": {"type": "string", "maxLength": 200, "description": "The project's own description of its review (formalization.yaml), shown as such."},
           "audits": {
             "type": "array",
             "items": {
