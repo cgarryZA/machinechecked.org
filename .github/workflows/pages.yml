@@ -26,6 +26,7 @@ jobs:
           python-version: "3.12"
       - name: Install the reader's package
         run: pip install "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@$(cat TOOL_VERSION)"
+      - run: pip install pytest && python -m pytest -q tests
       - run: python scripts/build.py --out _site
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://machinechecked.org/registry/schema.json",
+  "title": "A paper in the machinechecked.org registry",
+  "description": "What the site knows about one paper: where it is, the Lean repositories that formalise it (with who says so), and the audits published of them. The registry holds references only; the site builds no Lean.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "authors", "listing", "links", "formalisations"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^(arxiv:[0-9]{4}\\.[0-9]{4,5}|arxiv:[a-z-]+(\\.[A-Z]{2})?/[0-9]{7}|curated:[a-z0-9-]+)$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 400},
+    "authors": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 200}},
+    "year": {"type": "integer", "minimum": 1900, "maximum": 2100},
+    "abstract": {"type": "string", "maxLength": 5000},
+    "listing": {"enum": ["arxiv", "curated"], "description": "arxiv: listed because a repository names the arXiv paper; curated: added by the site's maintainer."},
+    "links": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "arxiv": {"$ref": "#/$defs/url"}, "pdf": {"$ref": "#/$defs/url"},
+        "doi": {"type": "string", "pattern": "^10\\.[0-9]{4,9}/\\S+$"}, "page": {"$ref": "#/$defs/url"}
+      }
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["title", "url", "note"],
+        "properties": {"title": {"type": "string"}, "url": {"$ref": "#/$defs/url"},
+                       "authors": {"type": "array", "items": {"type": "string"}},
+                       "note": {"type": "string", "maxLength": 300}}
+      }
+    },
+    "formalisations": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["repository", "commit", "stated_by"],
+        "properties": {
+          "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+          "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "paper_version": {"type": "string", "maxLength": 40},
+          "stated_by": {"type": "object", "additionalProperties": false, "required": ["source"],
+                        "properties": {"source": {"enum": ["formalization.yaml", "curated"]},
+                                       "file": {"type": "string"}, "note": {"type": "string", "maxLength": 300}}},
+          "review_status": {"type": "string", "maxLength": 60, "description": "The project's own description of its review (formalization.yaml), shown as such."},
+          "audits": {
+            "type": "array",
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["url", "author"],
+              "properties": {"url": {"$ref": "#/$defs/url"}, "author": {"type": "string", "maxLength": 200},
+                             "issues": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+                             "note": {"type": "string", "maxLength": 300}}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {"url": {"type": "string", "pattern": "^https://[^\\s\"'<>]+$"}}
+}

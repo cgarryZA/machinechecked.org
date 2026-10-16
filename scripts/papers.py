@@ -1,0 +1,210 @@
+"""The paper pages: one plain HTML page per registered paper, and the list of papers.
+
+Each page says what the site knows about one paper and who says it: where the paper is, the
+Lean repositories that state they formalise it (or that the maintainer listed), the project's own
+description of its review, and the audits published of each repository, opened in the reader.
+The pages are static HTML so that search engines and language models can read them; every
+string from the registry is escaped. Nothing here judges a formalisation or an audit.
+"""
+
+from __future__ import annotations
+
+import html
+import json
+from pathlib import Path
+from urllib.parse import quote
+
+ORIGIN = "https://machinechecked.org"
+
+
+def load(registry: Path) -> list[dict]:
+    """Every paper in the registry, validated against its schema."""
+    import jsonschema
+    schema = json.loads((registry / "schema.json").read_text(encoding="utf-8"))
+    papers, seen = [], set()
+    for p in sorted((registry / "papers").glob("*.json")):
+        d = json.loads(p.read_text(encoding="utf-8"))
+        try:
+            jsonschema.validate(d, schema)
+        except jsonschema.ValidationError as e:
+            raise SystemExit(f"{p.name}: {e.message} (at {'/'.join(map(str, e.path))})")
+        if d["id"] in seen:
+            raise SystemExit(f"{p.name}: {d['id']} is registered twice")
+        seen.add(d["id"])
+        papers.append(d)
+    return papers
+
+
+def slug(paper_id: str) -> str:
+    """The page's path segment: the arXiv identifier, or the curated name."""
+    kind, rest = paper_id.split(":", 1)
+    return rest.replace("/", "-")
+
+
+def e(s) -> str:
+    return html.escape(str(s), quote=True)
+
+
+def reader_url(audit_url: str) -> str:
+    return "/read/?audit=" + quote(audit_url, safe="")
+
+
+def page(title: str, description: str, body: str, canonical: str, jsonld: dict | None = None,
+         depth: int = 2) -> str:
+    up = "../" * depth
+    ld = ""
+    if jsonld:
+        data = json.dumps(jsonld, ensure_ascii=False).replace("</", "<\\/")
+        ld = f'<script type="application/ld+json">{data}</script>\n'
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(title)}</title>
+<meta name="description" content="{e(description)}">
+<link rel="canonical" href="{e(canonical)}">
+<link rel="stylesheet" href="{up}assets/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%232f6f73' stroke-width='3'/%3E%3Cpath d='M20 20l8 8' stroke='%232f6f73' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+{ld}</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="{up}"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="13" cy="13" r="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20 20l8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>MachineChecked</a>
+    <nav><a href="{up}papers/">Papers</a><a href="{up}demo/">Demo</a><a href="https://github.com/cgarryZA/MachineChecked">GitHub</a></nav>
+  </header>
+{body}
+  <footer>
+    <span>MachineChecked · Apache-2.0</span>
+    <a href="https://github.com/cgarryZA/machinechecked.org/issues/new?title={quote('Listing: ' + title)}">Report a problem with this page</a>
+  </footer>
+</div>
+</body>
+</html>
+"""
+
+
+def level(paper: dict) -> str:
+    """The furthest the site's knowledge of the paper goes, in words."""
+    fs = paper["formalisations"]
+    if any(f.get("audits") for f in fs):
+        return "Audit published"
+    if fs:
+        return "Lean repository linked"
+    return "No Lean formalisation listed"
+
+
+def stated(f: dict) -> str:
+    s = f["stated_by"]
+    if s["source"] == "formalization.yaml":
+        words = "The repository states that it formalises this paper (in its <code>formalization.yaml</code>)."
+    else:
+        words = "Listed by the site's maintainer."
+    return words + (f" {e(s['note'])}" if s.get("note") and s["source"] == "curated" else "")
+
+
+def formalisation(f: dict) -> str:
+    repo, commit = f["repository"], f["commit"]
+    url = f"https://github.com/{repo}/tree/{commit}"
+    parts = [f'<div class="card"><h3><a href="{e(url)}">{e(repo)}</a> '
+             f'<span class="faint small">at <code>{e(commit[:12])}</code></span></h3>',
+             f"<p>{stated(f)}</p>"]
+    if f.get("review_status"):
+        parts.append(f'<p class="small muted">The project describes its own review as '
+                     f'“{e(f["review_status"])}”.</p>')
+    audits = f.get("audits") or []
+    if audits:
+        parts.append("<ul class=\"audits\">")
+        for a in audits:
+            parts.append(f'<li><a class="btn primary" href="{e(reader_url(a["url"]))}">Open the audit</a> '
+                         f'by {e(a["author"])}'
+                         + (f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else "")
+                         + "</li>")
+        parts.append("</ul>")
+        parts.append('<p class="small muted">An audit records what its author linked, checked and '
+                     "reviewed. MachineChecked shows it and does not endorse it.</p>")
+    else:
+        parts.append('<p class="small muted">No audit of this repository has been published yet, so '
+                     "this page says nothing about what Lean establishes for the paper's claims.</p>")
+    parts.append("</div>")
+    return "\n".join(parts)
+
+
+def paper_page(paper: dict) -> str:
+    s = slug(paper["id"])
+    links = paper["links"]
+    ident = (f'arXiv:{e(paper["id"].split(":", 1)[1])}' if paper["id"].startswith("arxiv:")
+             else "Not on arXiv (listed by the site's maintainer)")
+    src = []
+    for key, label in (("arxiv", "arXiv"), ("pdf", "PDF"), ("page", "Paper's page")):
+        if links.get(key):
+            src.append(f'<a href="{e(links[key])}">{label}</a>')
+    if links.get("doi"):
+        src.append(f'<a href="https://doi.org/{e(links["doi"])}">DOI {e(links["doi"])}</a>')
+    fs = paper["formalisations"]
+    body = [f'  <main class="paper">',
+            f'    <p class="eyebrow">{e(level(paper))}</p>',
+            f"    <h1>{e(paper['title'])}</h1>",
+            f'    <p class="authors">{e(", ".join(paper["authors"]))}'
+            + (f" · {paper['year']}" if paper.get("year") else "") + "</p>",
+            f'    <p class="small muted">{ident}' + (" · " + " · ".join(src) if src else "") + "</p>"]
+    if paper.get("abstract"):
+        body.append(f'    <p class="abstract">{e(paper["abstract"])}</p>')
+    body.append(f"    <h2>Lean formalisations ({len(fs)})</h2>")
+    if len(fs) > 1:
+        body.append('    <p class="small muted">Each is a separate source of evidence; their results are '
+                    "never combined into one verdict.</p>")
+    body += [formalisation(f) for f in fs] or ['    <p class="muted">None listed.</p>']
+    if paper.get("related"):
+        body.append("    <h2>Related</h2><ul>")
+        for r in paper["related"]:
+            who = f' — {e(", ".join(r["authors"]))}' if r.get("authors") else ""
+            body.append(f'<li><a href="{e(r["url"])}">{e(r["title"])}</a>{who}. '
+                        f'<span class="muted">{e(r["note"])}</span></li>')
+        body.append("</ul>")
+    body.append("  </main>")
+    jsonld = {"@context": "https://schema.org", "@type": "ScholarlyArticle",
+              "name": paper["title"], "author": [{"@type": "Person" if a != "OpenAI" else
+                                                  "Organization", "name": a}
+                                                 for a in paper["authors"]],
+              "url": links.get("arxiv") or links.get("page") or links.get("pdf"),
+              "mainEntityOfPage": f"{ORIGIN}/papers/{s}/"}
+    if paper.get("year"):
+        jsonld["datePublished"] = str(paper["year"])
+    desc = (f"{paper['title']}: its Lean formalisations and published audits on MachineChecked. "
+            f"{level(paper)}.")
+    return page(f"{paper['title']} — MachineChecked", desc, "\n".join(body),
+                f"{ORIGIN}/papers/{s}/", jsonld)
+
+
+def index_page(papers: list[dict]) -> str:
+    rows = []
+    for p in sorted(papers, key=lambda p: p["title"].lower()):
+        rows.append(f'<li><a href="{e(slug(p["id"]))}/">{e(p["title"])}</a>'
+                    f'<span class="muted"> — {e(", ".join(p["authors"]))}</span>'
+                    f'<span class="pill">{e(level(p))}</span></li>')
+    body = f"""  <main class="paper">
+    <h1>Papers</h1>
+    <p class="muted">Papers with Lean formalisations, and the audits published of them. A listing
+      says what a repository states; an audit says what its author recorded. MachineChecked
+      endorses neither.</p>
+    <ul class="papers">
+{chr(10).join(rows) or '<li class="muted">None yet.</li>'}
+    </ul>
+  </main>"""
+    return page("Papers — MachineChecked",
+                "Mathematical papers with Lean formalisations, and published MachineChecked audits.",
+                body, f"{ORIGIN}/papers/", depth=1)
+
+
+def write(out: Path, papers: list[dict]) -> list[str]:
+    """The paper pages and the list, under `out/papers/`; their addresses."""
+    urls = [f"{ORIGIN}/papers/"]
+    (out / "papers").mkdir(parents=True, exist_ok=True)
+    (out / "papers" / "index.html").write_text(index_page(papers), encoding="utf-8")
+    for p in papers:
+        d = out / "papers" / slug(p["id"])
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(paper_page(p), encoding="utf-8")
+        urls.append(f"{ORIGIN}/papers/{slug(p['id'])}/")
+    return urls

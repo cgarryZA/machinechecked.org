@@ -1,0 +1,25 @@
+{
+ "id": "curated:openai-euler",
+ "title": "Finite time blowup for the Euler equation",
+ "authors": [
+  "OpenAI"
+ ],
+ "year": 2026,
+ "listing": "curated",
+ "links": {
+  "pdf": "https://cdn.openai.com/pdf/315b36cd-ec98-4023-8342-93345194ece1/euler.pdf"
+ },
+ "formalisations": [
+  {
+   "repository": "openai/NavierStokesAndEuler",
+   "commit": "f9e8bc5b38b6e212696e8a30e3e91517af887bbd",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml",
+    "note": "The repository's formalization.yaml lists this paper as a source it formalizes."
+   },
+   "review_status": "self-assessed",
+   "audits": []
+  }
+ ]
+}
