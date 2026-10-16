@@ -94,13 +94,26 @@ def test_a_paper_page_is_the_reader_with_its_text_kept(tmp_path):
     papers.write(out, papers.load(_registry(tmp_path / "reg", p)), READER)
     page = (out / "papers" / "2601.01234" / "index.html").read_text()
     assert 'src="/read/assets/index-x.js"' in page and '<div id="app"></div>' in page
-    assert "window.__MACHINECHECKED_PAPER__ = " in page
-    # The registry's text cannot close the inline script.
-    script = page.split("window.__MACHINECHECKED_PAPER__ = ", 1)[1].split("</script>", 1)[0]
-    assert "<" not in script
-    assert json.loads(script.rstrip().rsplit(";document", 1)[0])["title"] == p["title"]
+    # The paper's data is not in the page: the reader loads it from data/ beside it.
+    assert "__MACHINECHECKED_PAPER__" not in page and "</script><script>alert(1)" not in page
     # The text is still in the page, for readers without JavaScript and for search engines.
     assert "&lt;/script&gt;" in page and "Lean formalisations" in page
+
+
+def test_the_build_writes_each_paper_page_in_the_reader_s_format(tmp_path, monkeypatch):
+    import build
+    reader = tmp_path / "reader"
+    (reader / "assets").mkdir(parents=True)
+    (reader / "index.html").write_text(READER)
+    monkeypatch.setattr(build, "ROOT", ROOT)
+    out = tmp_path / "out"
+    build.build(out, reader)
+    for p in papers.load(ROOT / "registry"):
+        d = out / "papers" / papers.slug(p["id"])
+        index = json.loads((d / "data" / "index.json").read_text())
+        assert index["mode"] == "paper" and index["paper"]["id"] == p["id"]
+        assert index["projects"] == [f["repository"] for f in p["formalisations"]]
+        assert (d / "index.html").is_file() and (d / "badge.svg").is_file()
 
 
 def test_tex_in_titles_reads_as_text(tmp_path):

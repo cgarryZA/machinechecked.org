@@ -45,15 +45,19 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
         shutil.rmtree(out)
     shutil.copytree(ROOT / "site", out)
     shutil.copytree(reader, out / "read")
+    import claims
     import papers
+    from prooflens.paper import write_paper_site
     ps = papers.load(ROOT / "registry")
     if claims_cache is not None:
-        import claims
         claims_cache.mkdir(parents=True, exist_ok=True)
-        for p in ps:
-            found = claims.claims_for(p, claims_cache)
-            if found:
-                p["claims"], p["page_size"] = found["claims"], found["page_size"]
+    # Each paper page's data, in the reader's standard format, beside the page (written first:
+    # it replaces the page's directory).
+    for p in ps:
+        found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
+        write_paper_site(out / "papers" / papers.slug(p["id"]), p,
+                         found["claims"] if found else [], found and found["page_size"],
+                         claims.view_pdf(p))
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(

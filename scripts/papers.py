@@ -81,22 +81,16 @@ def reader_head(reader_index: str) -> str:
     return "\n".join(t.replace('"./assets/', '"/read/assets/') for t in tags)
 
 
-def inline_json(data) -> str:
-    """JSON safe inside a <script> element."""
-    return (json.dumps(data, ensure_ascii=False).replace("<", "\\u003c")
-            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
-
-
 def page(title: str, description: str, body: str, canonical: str, jsonld: dict | None = None,
-         depth: int = 2, reader: str | None = None, paper: dict | None = None) -> str:
-    """A page of the site. With `reader` (the reader's asset tags) and `paper`, the page is the
-    reader showing that paper; its text stays in the page, shown only without JavaScript, so
-    that search engines and language models read it."""
+         depth: int = 2, reader: str | None = None) -> str:
+    """A page of the site. With `reader` (the reader's asset tags), the page is the reader,
+    showing the data beside the page (`data/`, written by MachineChecked's `write_paper_site`);
+    its text stays in the page, shown only without JavaScript, so that search engines and
+    language models read it."""
     up = "../" * depth
     app = ""
-    if reader and paper is not None:
-        app = (f"<script>window.__MACHINECHECKED_PAPER__ = {inline_json(paper)};"
-               "document.documentElement.classList.add('reader');</script>\n"
+    if reader:
+        app = ("<script>document.documentElement.classList.add('reader');</script>\n"
                "<style>html.reader body > .wrap { display: none; }</style>\n" + reader + "\n")
     ld = ""
     if jsonld:
@@ -232,7 +226,7 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
     desc = (f"{tex_text(paper['title'])}: its Lean formalisations and published audits on MachineChecked. "
             f"{level(paper)}.")
     return page(f"{tex_text(paper['title'])} — MachineChecked", desc, "\n".join(body),
-                f"{ORIGIN}/papers/{s}/", jsonld, reader=reader, paper=paper)
+                f"{ORIGIN}/papers/{s}/", jsonld, reader=reader)
 
 
 # Search on /papers/: the listed papers filter as one types; a query that is an arXiv identifier,

@@ -16,6 +16,7 @@ what its author linked, checked and reviewed; the site does not endorse it.
 | `site/` | the landing page, its preview images, the paper pages' stylesheet, `demo/` (forwards to the toy audit in the reader) |
 | `registry/papers/*.json` | one file per paper: where it is, the Lean repositories that formalise it and who says so, and published audits (`registry/schema.json`) |
 | `scripts/papers.py` | builds `/papers/` and a plain HTML page per paper from the registry |
+| `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
 | `scripts/build.py` | assembles the site into `_site/`: `site/`, the reader at `/read/`, `sitemap.xml`, `robots.txt`, `llms.txt` |
 | `TOOL_VERSION` | the MachineChecked commit whose reader the site serves |
 | `llms.txt` | a short description for language models |
