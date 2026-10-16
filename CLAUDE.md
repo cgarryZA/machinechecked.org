@@ -16,6 +16,18 @@ for both; read its "The site" section before changing what the site lists or sho
 - **The reader is not edited here.** It is the built reader of the MachineChecked package at
   `TOOL_VERSION`; change it in the MachineChecked repository and bump the pin.
 
+## Tracking work
+
+As things are suggested and agreed (by the owner, or in a review the owner accepts), log each item
+as a GitHub issue in the repository it affects (`cgarryZA/MachineChecked`,
+`cgarryZA/machinechecked.org`, or a downstream project's own repository): one issue per item, saying
+what, why, and when it is done, with a label for its kind (`bug`, `enhancement`, `cleanup`,
+`docs`). The owner's GitHub Projects board is the kanban: its auto-add workflows pick up new
+issues from each repository (sessions cannot use the Projects API). Log first; do not start an
+issue's work until it is agreed to be worked on, and close it with the commit that does it
+(`Fixes #n`). Issues in public repositories follow the privacy rules above: nothing of a private
+project, written generically.
+
 ## Style
 
 Plain English for mathematicians; comments say what the code does or why, not its history.
