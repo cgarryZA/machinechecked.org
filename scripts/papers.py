@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import html
 import json
+
+from texmath import tex_text
 from pathlib import Path
 from urllib.parse import quote
 
@@ -200,7 +202,7 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
     fs = paper["formalisations"]
     body = [f'  <main class="paper">',
             f'    <p class="eyebrow">{e(level(paper))}</p>',
-            f"    <h1>{e(paper['title'])}</h1>",
+            f"    <h1>{e(tex_text(paper['title']))}</h1>",
             f'    <p class="authors">{e(", ".join(paper["authors"]))}'
             + (f" · {paper['year']}" if paper.get("year") else "") + "</p>",
             f'    <p class="small muted">{ident}' + (" · " + " · ".join(src) if src else "") + "</p>"]
@@ -220,16 +222,16 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
         body.append("</ul>")
     body.append("  </main>")
     jsonld = {"@context": "https://schema.org", "@type": "ScholarlyArticle",
-              "name": paper["title"], "author": [{"@type": "Person" if a != "OpenAI" else
+              "name": tex_text(paper["title"]), "author": [{"@type": "Person" if a != "OpenAI" else
                                                   "Organization", "name": a}
                                                  for a in paper["authors"]],
               "url": links.get("arxiv") or links.get("page") or links.get("pdf"),
               "mainEntityOfPage": f"{ORIGIN}/papers/{s}/"}
     if paper.get("year"):
         jsonld["datePublished"] = str(paper["year"])
-    desc = (f"{paper['title']}: its Lean formalisations and published audits on MachineChecked. "
+    desc = (f"{tex_text(paper['title'])}: its Lean formalisations and published audits on MachineChecked. "
             f"{level(paper)}.")
-    return page(f"{paper['title']} — MachineChecked", desc, "\n".join(body),
+    return page(f"{tex_text(paper['title'])} — MachineChecked", desc, "\n".join(body),
                 f"{ORIGIN}/papers/{s}/", jsonld, reader=reader, paper=paper)
 
 
@@ -289,8 +291,8 @@ SEARCH_JS = r"""
 
 def index_page(papers: list[dict]) -> str:
     rows = []
-    for p in sorted(papers, key=lambda p: p["title"].lower()):
-        rows.append(f'<li><a href="{e(slug(p["id"]))}/">{e(p["title"])}</a>'
+    for p in sorted(papers, key=lambda p: tex_text(p["title"]).lower()):
+        rows.append(f'<li><a href="{e(slug(p["id"]))}/">{e(tex_text(p["title"]))}</a>'
                     f'<span class="muted"> — {e(", ".join(p["authors"]))}</span>'
                     f'<span class="pill">{e(level(p))}</span></li>')
     body = f"""  <main class="paper">

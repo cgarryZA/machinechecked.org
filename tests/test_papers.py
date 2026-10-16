@@ -101,3 +101,15 @@ def test_a_paper_page_is_the_reader_with_its_text_kept(tmp_path):
     assert json.loads(script.rstrip().rsplit(";document", 1)[0])["title"] == p["title"]
     # The text is still in the page, for readers without JavaScript and for search engines.
     assert "&lt;/script&gt;" in page and "Lean formalisations" in page
+
+
+def test_tex_in_titles_reads_as_text(tmp_path):
+    from texmath import tex_text
+    assert tex_text(r"Marton's Conjecture in $\mathbb{F}_2^n$") == "Marton's Conjecture in 𝔽₂ⁿ"
+    assert tex_text(r"Erd\H{o}s on $L^p$") == "Erdős on Lᵖ"
+    assert tex_text(r"$x^{ab}$") == "xᵃᵇ" and tex_text(r"$x^{\star}$") == "x^⋆"
+    p = {**PAPER, "title": r"Sets in $\mathbb{R}^3$"}
+    out = tmp_path / "out"
+    papers.write(out, papers.load(_registry(tmp_path / "reg", p)))
+    assert "Sets in ℝ³" in (out / "papers" / "index.html").read_text()
+    assert "<title>Sets in ℝ³ — MachineChecked</title>" in (out / "papers" / "2601.01234" / "index.html").read_text()

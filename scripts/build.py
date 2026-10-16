@@ -40,14 +40,21 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
-def build(out: Path, reader: Path) -> None:
+def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "site", out)
     shutil.copytree(reader, out / "read")
     import papers
-    papers.write(out, papers.load(ROOT / "registry"),
-                 (out / "read" / "index.html").read_text(encoding="utf-8"))
+    ps = papers.load(ROOT / "registry")
+    if claims_cache is not None:
+        import claims
+        claims_cache.mkdir(parents=True, exist_ok=True)
+        for p in ps:
+            found = claims.claims_for(p, claims_cache)
+            if found:
+                p["claims"], p["page_size"] = found["claims"], found["page_size"]
+    papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -65,8 +72,11 @@ def main() -> None:
     a = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     a.add_argument("--out", default="_site")
     a.add_argument("--reader", help="a built reader directory (default: the installed package's)")
+    a.add_argument("--claims-cache", help="find each paper's statements in its PDF (needs "
+                   "poppler), caching the results here")
     args = a.parse_args()
-    build(Path(args.out).resolve(), Path(args.reader).resolve() if args.reader else reader_dir())
+    build(Path(args.out).resolve(), Path(args.reader).resolve() if args.reader else reader_dir(),
+          Path(args.claims_cache).resolve() if args.claims_cache else None)
 
 
 if __name__ == "__main__":
