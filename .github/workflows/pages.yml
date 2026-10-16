@@ -1,0 +1,46 @@
+name: Site
+
+# Publishes machinechecked.org. Installs the MachineChecked package at the version TOOL_VERSION
+# pins (pure Python: no Lean, no TeX) for its built reader, assembles the site, and deploys it
+# from main. Pages must have "GitHub Actions" as its source (Settings > Pages).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the reader's package
+        run: pip install "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@$(cat TOOL_VERSION)"
+      - run: python scripts/build.py --out _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MachineChecked demo</title>
+<meta name="robots" content="noindex">
+<script>
+  // The demo is the synthetic toy paper's audit, published by the MachineChecked tool's own CI;
+  // it opens in the site's reader. A link to a claim (#/r/…/read/…) is kept.
+  const audit = "https://cgarryza.github.io/MachineChecked/demo/";
+  location.replace("../read/?audit=" + encodeURIComponent(audit) + location.hash);
+</script>
+</head>
+<body>
+<p><a href="../read/?audit=https%3A%2F%2Fcgarryza.github.io%2FMachineChecked%2Fdemo%2F">Open the demo</a></p>
+</body>
+</html>
