@@ -5,7 +5,7 @@ the reader, and (to come) the index of papers, the Lean repositories that formal
 published audits.
 
 The site is static and builds no Lean. Its reader comes from the MachineChecked package at the
-commit [`TOOL_VERSION`](TOOL_VERSION) pins; audits are published by their authors where they
+version [`TOOL_VERSION`](TOOL_VERSION) pins (a release, or a commit); audits are published by their authors where they
 choose and read by the reader as data (`/read/?audit=<address of the audit>`). An audit records
 what its author linked, checked and reviewed; the site does not endorse it.
 
@@ -18,18 +18,21 @@ what its author linked, checked and reviewed; the site does not endorse it.
 | `scripts/papers.py` | builds `/papers/` and a plain HTML page per paper from the registry |
 | `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
 | `scripts/build.py` | assembles the site into `_site/`: `site/`, the reader at `/read/`, `sitemap.xml`, `robots.txt`, `llms.txt` |
-| `TOOL_VERSION` | the MachineChecked commit whose reader the site serves |
+| `TOOL_VERSION` | the MachineChecked release (or commit) whose reader the site serves |
 | `llms.txt` | a short description for language models |
 
 ## Build
 
 ```sh
-pip install "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@$(cat TOOL_VERSION)"
-python3 scripts/build.py --out _site
+pip install "machinechecked==$(cat TOOL_VERSION)"   # or, for a commit: "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@<commit>"
+python3 scripts/build.py --out _site --claims-cache .cache/claims
+npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
-The `Site` workflow runs the tests (`tests/`) and does this on every push, and deploys `main` to
-GitHub Pages.
+The `Site` workflow runs the tests (`tests/`), builds the site and tests it in a browser on every
+push, and deploys `main` to GitHub Pages. The browser test opens a paper with two formalisations,
+a paper with no audit, the toy audit as exported by an older version (`tests/fixtures/`), and the
+demo; keep each older export there, so the reader keeps opening what people have published.
 
 ## How papers get listed
 
@@ -48,6 +51,9 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 (`listing: "curated"`). An audit is added by its address (where its `audit.json` is) and its
 author's name; the page opens it in the reader.
 
-To update the reader, set `TOOL_VERSION` to a newer MachineChecked commit. The landing page's
+The reader is updated by pull request: the daily `Propose reader update` workflow notices a newer
+MachineChecked release on PyPI, opens a pull request pinning it, and runs the Site workflow on it
+(build and browser test, no deploy). Merging it deploys. To test an unreleased commit, pin the
+commit by hand. The landing page's
 screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from the built site's
 reader and an exported audit; how to run it is at the top of the script.

@@ -1,0 +1,64 @@
+name: Propose reader update
+
+# Daily: when PyPI has a MachineChecked release newer than the one TOOL_VERSION pins, pushes a
+# branch pinning that exact version, opens a pull request for it, and starts the Site workflow
+# on the branch, which builds the site with it and tests it in a browser (tests/site.test.mjs)
+# but deploys only from main. Nothing reaches the live site until the pull request is merged.
+# (A pull request opened by this workflow's token starts no checks by itself, hence the explicit
+# run; its result shows on the pull request's commit.) Needs Settings > Actions > General >
+# "Allow GitHub Actions to create and approve pull requests".
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: update-reader
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Is there a newer release?
+        id: v
+        run: |
+          latest=$(curl -fsS https://pypi.org/pypi/machinechecked/json | python3 -c "import json,sys; print(json.load(sys.stdin)['info']['version'])")
+          pinned=$(cat TOOL_VERSION)
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          # A pinned commit is replaced by the next release; a pinned version only by a newer one.
+          newer=$(python3 - "$latest" "$pinned" <<'EOF'
+          import re, sys
+          latest, pinned = sys.argv[1], sys.argv[2]
+          key = lambda v: tuple(int(x) for x in re.findall(r"\d+", v))
+          print("yes" if re.fullmatch(r"[0-9a-f]{40}", pinned) or key(latest) > key(pinned) else "no")
+          EOF
+          )
+          echo "newer=$newer" >> "$GITHUB_OUTPUT"
+          echo "pinned $pinned, latest release $latest: newer=$newer"
+      - name: Open a pull request pinning it, and test it
+        if: steps.v.outputs.newer == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.latest }}
+        run: |
+          branch="reader-$V"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "$branch is already proposed"; exit 0
+          fi
+          git switch -c "$branch"
+          echo "$V" > TOOL_VERSION
+          git add TOOL_VERSION
+          git -c user.name="machinechecked-updates" -c user.email="updates@machinechecked.org" \
+            commit -q -m "Reader: MachineChecked $V"
+          git push -q origin "$branch"
+          gh pr create --head "$branch" --title "Reader: MachineChecked $V" --body "Pins the reader to MachineChecked $V (https://pypi.org/project/machinechecked/$V/), released after the version this site pins now.
+
+          The Site workflow is running on this branch: it builds the site with $V and tests it in a browser (tests/site.test.mjs: a paper with two formalisations, a paper with no audit, an audit exported by an older version, the demo). It does not deploy; merging does. Check that run before merging."
+          gh workflow run pages.yml --ref "$branch"

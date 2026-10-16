@@ -14,7 +14,9 @@ for both; read its "The site" section before changing what the site lists or sho
   author recorded. Words on pages never round a status up (MachineChecked's
   `docs/EVIDENCE_POLICY.md`); no percentages of verification.
 - **The reader is not edited here.** It is the built reader of the MachineChecked package at
-  `TOOL_VERSION`; change it in the MachineChecked repository and bump the pin.
+  `TOOL_VERSION`; change it in the MachineChecked repository. A new release reaches the site by
+  the pull request `Propose reader update` opens, after the browser test (`tests/site.test.mjs`)
+  passes on it; never deploy a reader version untested.
 
 ## Tracking work
 
