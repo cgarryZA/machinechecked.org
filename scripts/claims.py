@@ -71,7 +71,10 @@ def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
     if not url:
         return None
     fs = paper.get("formalisations", [])
-    key = hashlib.sha256(json.dumps(["paper@1", url, [(f["repository"], f["commit"]) for f in fs]],
+    # Keyed also by MachineChecked's version: a newer one may find more in the same PDF.
+    from importlib.metadata import version
+    key = hashlib.sha256(json.dumps([version("machinechecked"), url,
+                                     [(f["repository"], f["commit"]) for f in fs]],
                                     sort_keys=True).encode()).hexdigest()[:20]
     hit = cache / f"{key}.json"
     if hit.exists():
