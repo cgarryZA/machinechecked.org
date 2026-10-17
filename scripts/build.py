@@ -40,7 +40,36 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
-def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
+def audit_answers(url: str) -> bool:
+    """Whether an audit is published at `url`: its descriptor answers and says it is one."""
+    import json
+    import urllib.request
+    try:
+        req = urllib.request.Request(url.rstrip("/") + "/audit.json",
+                                     headers={"User-Agent": "machinechecked.org (audit check)"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.loads(r.read(1_000_000))
+        return str(d.get("schema", "")).startswith("machinechecked/audit@")
+    except Exception:
+        return False
+
+
+def drop_unreachable_audits(ps: list[dict], log=print) -> None:
+    """Leave out audits whose address does not answer as an audit (not published yet, or gone):
+    the page then says what is listed without linking a reader to nothing. A later build lists
+    them again once they answer."""
+    for p in ps:
+        for f in p["formalisations"]:
+            live = [a for a in f.get("audits") or [] if audit_answers(a["url"])]
+            for a in f.get("audits") or []:
+                if a not in live:
+                    log(f"{p['id']}: the audit at {a['url']} does not answer; not listed")
+            if "audits" in f:
+                f["audits"] = live
+
+
+def build(out: Path, reader: Path, claims_cache: Path | None = None,
+          check_audits: bool = False) -> None:
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "site", out)
@@ -49,6 +78,8 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None) -> None:
     import papers
     from prooflens.paper import write_paper_site
     ps = papers.load(ROOT / "registry")
+    if check_audits:
+        drop_unreachable_audits(ps)
     if claims_cache is not None:
         claims_cache.mkdir(parents=True, exist_ok=True)
     # Each paper page's data, in the reader's standard format, beside the page (written first:
@@ -81,9 +112,11 @@ def main() -> None:
     a.add_argument("--reader", help="a built reader directory (default: the installed package's)")
     a.add_argument("--claims-cache", help="find each paper's statements in its PDF (needs "
                    "poppler), caching the results here")
+    a.add_argument("--check-audits", action="store_true",
+                   help="list only the audits whose address answers as an audit")
     args = a.parse_args()
     build(Path(args.out).resolve(), Path(args.reader).resolve() if args.reader else reader_dir(),
-          Path(args.claims_cache).resolve() if args.claims_cache else None)
+          Path(args.claims_cache).resolve() if args.claims_cache else None, args.check_audits)
 
 
 if __name__ == "__main__":

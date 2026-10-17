@@ -10,6 +10,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "43 6 * * *"   # daily: lists an audit once it answers, drops one that stopped
 
 permissions:
   contents: read
@@ -42,7 +44,7 @@ jobs:
           key: claims-${{ hashFiles('TOOL_VERSION', 'registry/**/*.json') }}
           restore-keys: claims-
       - run: pip install pytest && python -m pytest -q tests
-      - run: python scripts/build.py --out _site --claims-cache .cache/claims
+      - run: python scripts/build.py --out _site --claims-cache .cache/claims --check-audits
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

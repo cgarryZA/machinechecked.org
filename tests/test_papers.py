@@ -137,3 +137,15 @@ def test_each_paper_has_a_badge_saying_what_is_listed(tmp_path):
     papers.write(out, papers.load(_registry(tmp_path / "reg", PAPER)))
     svg = (out / "papers" / "2601.01234" / "badge.svg").read_text()
     assert svg.startswith("<svg") and "Audit published" in svg and "verified" not in svg.lower()
+
+
+def test_an_audit_that_does_not_answer_is_not_listed(monkeypatch):
+    import build
+    ps = [{"id": "arxiv:2601.01234", "formalisations": [
+        {"repository": "a/b", "audits": [{"url": "https://live.example/"},
+                                         {"url": "https://not-yet.example/"}]}]}]
+    monkeypatch.setattr(build, "audit_answers", lambda url: url == "https://live.example/")
+    said = []
+    build.drop_unreachable_audits(ps, log=said.append)
+    assert ps[0]["formalisations"][0]["audits"] == [{"url": "https://live.example/"}]
+    assert said and "not-yet.example" in said[0]
