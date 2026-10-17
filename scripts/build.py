@@ -91,6 +91,16 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
     # it replaces the page's directory).
     for p in ps:
         found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
+        try:
+            from prooflens.paper import apply_audits
+        except ImportError:          # a MachineChecked release before audits were read
+            apply_audits = None
+        if found and apply_audits:
+            # A published audit's own status for each statement it lists (read fresh: an
+            # audit changes without the PDF or the commit changing).
+            numbers = {c["number"] for c in found["claims"]}
+            found = {**found, "claims": apply_audits([dict(c) for c in found["claims"]],
+                                                     claims.audits_for(p, numbers))}
         # The reader's panel offers each listing's report link as the static page builds it.
         entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
                                          for f in p["formalisations"]]}
