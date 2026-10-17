@@ -1,0 +1,33 @@
+{
+ "id": "arxiv:2608.23203",
+ "title": "Well-posedness of fully coupled McKean-Vlasov FBSDEs with jumps under full-tuple law dependence",
+ "authors": [
+  "Chunrong Feng",
+  "Christian Garry"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.23203"
+ },
+ "formalisations": [
+  {
+   "repository": "cgarryZA/mvfbsdej-well-posedness-lean",
+   "commit": "5c4bf4fcd5ff7c5843c5631c63a76efd6643bac8",
+   "paper_version": "v1",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "Per-claim status in ACCEPTANCE.md and the MachineChecked audit; the statements are reviewed by their author.",
+   "audits": [
+    {
+     "url": "https://cgarryza.github.io/mvfbsdej-well-posedness-lean/",
+     "author": "Christian Garry",
+     "issues": "cgarryZA/mvfbsdej-well-posedness-lean",
+     "note": "Published by the repository's own workflow after every push; its statements are reviewed by their author, which is not an independent review."
+    }
+   ]
+  }
+ ]
+}
