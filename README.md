@@ -1,8 +1,8 @@
 # machinechecked.org
 
 The website of [MachineChecked](https://github.com/cgarryZA/MachineChecked): the landing page,
-the reader, and (to come) the index of papers, the Lean repositories that formalise them, and
-published audits.
+the reader, the index of papers and Lean repositories that state they formalise them, and
+links to published audits.
 
 The site is static and builds no Lean. Its reader comes from the MachineChecked package at the
 version [`TOOL_VERSION`](TOOL_VERSION) pins (a release, or a commit); audits are published by their authors where they
@@ -30,9 +30,10 @@ npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
 The `Site` workflow runs the tests (`tests/`), builds the site and tests it in a browser on every
-push, and deploys `main` to GitHub Pages. The browser test opens a paper with two formalisations,
-a paper with no audit, the toy audit as exported by an older version (`tests/fixtures/`), and the
-demo; keep each older export there, so the reader keeps opening what people have published.
+push, and deploys `main` to GitHub Pages. The browser test opens a paper with two formalisations, a paper with no audit, the
+fixture audit (`tests/fixtures/`), and the demo. Keep fixtures aligned with the pinned
+reader's supported data format; prelaunch generated formats can be rebuilt rather than
+maintained indefinitely.
 
 ## How papers get listed
 
