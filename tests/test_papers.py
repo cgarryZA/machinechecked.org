@@ -149,3 +149,23 @@ def test_an_audit_that_does_not_answer_is_not_listed(monkeypatch):
     build.drop_unreachable_audits(ps, log=said.append)
     assert ps[0]["formalisations"][0]["audits"] == [{"url": "https://live.example/"}]
     assert said and "not-yet.example" in said[0]
+
+
+def test_a_listing_that_follows_a_branch_is_shown_at_its_head(monkeypatch):
+    """A formalisation with `follow` is shown at the branch's current commit, the pinned commit
+    is the fallback, and a moved branch is reported so the site can be rebuilt."""
+    import follow
+    ps = [{"id": "arxiv:1", "formalisations": [
+        {"repository": "o/r", "commit": "a" * 40, "follow": "main"},
+        {"repository": "o/s", "commit": "c" * 40}]}]
+    monkeypatch.setattr(follow, "head", lambda repo, branch: "b" * 40)
+    used = follow.resolve(ps, log=lambda m: None)
+    assert used == {"o/r@main": "b" * 40}
+    assert ps[0]["formalisations"][0]["commit"] == "b" * 40
+    assert ps[0]["formalisations"][1]["commit"] == "c" * 40, "a pinned listing does not move"
+    assert follow.moved(ps, used) == []
+    monkeypatch.setattr(follow, "head", lambda repo, branch: "d" * 40)
+    assert follow.moved(ps, used) == [f"o/r@main: {'b' * 12} -> {'d' * 12}"]
+    monkeypatch.setattr(follow, "head", lambda repo, branch: None)
+    ps[0]["formalisations"][0]["commit"] = "a" * 40
+    assert follow.resolve(ps, log=lambda m: None) == {"o/r@main": "a" * 40}

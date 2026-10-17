@@ -13,7 +13,8 @@
  "formalisations": [
   {
    "repository": "cgarryZA/mvfbsdej-well-posedness-lean",
-   "commit": "5c4bf4fcd5ff7c5843c5631c63a76efd6643bac8",
+   "commit": "d1e52083f9a7a195d5d1284ae8a70f91459d1b41",
+   "follow": "main",
    "paper_version": "v1",
    "stated_by": {
     "source": "formalization.yaml",

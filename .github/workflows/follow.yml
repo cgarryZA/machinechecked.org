@@ -1,0 +1,43 @@
+name: Follow listed branches
+
+# Every 15 minutes: when a listing that follows a branch (`"follow"` in its registry entry) has
+# moved since the published site was built, start the Site workflow, which rebuilds and deploys
+# the site with the branch's new commit. It reads commit ids only; it runs nothing from a listed
+# repository. (A run started by this workflow's token is a workflow_dispatch, which the token is
+# allowed to start.)
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: follow
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Has a followed branch moved?
+        id: moved
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if python scripts/follow.py check https://machinechecked.org; then
+            echo "moved=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Rebuild the site
+        if: steps.moved.outputs.moved == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --ref main

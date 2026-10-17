@@ -44,7 +44,9 @@ jobs:
           key: claims-${{ hashFiles('TOOL_VERSION', 'registry/**/*.json') }}
           restore-keys: claims-
       - run: pip install pytest && python -m pytest -q tests
-      - run: python scripts/build.py --out _site --claims-cache .cache/claims --check-audits
+      - run: python scripts/build.py --out _site --claims-cache .cache/claims --check-audits --follow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

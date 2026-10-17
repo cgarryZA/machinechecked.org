@@ -69,7 +69,7 @@ def drop_unreachable_audits(ps: list[dict], log=print) -> None:
 
 
 def build(out: Path, reader: Path, claims_cache: Path | None = None,
-          check_audits: bool = False) -> None:
+          check_audits: bool = False, follow: bool = False) -> None:
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "site", out)
@@ -78,6 +78,11 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
     import papers
     from prooflens.paper import write_paper_site
     ps = papers.load(ROOT / "registry")
+    # Listings that follow a branch are shown at its current commit; what was used is
+    # published, so the check workflow can tell when to rebuild.
+    import json
+    import follow as fl
+    used = fl.resolve(ps) if follow else {}
     if check_audits:
         drop_unreachable_audits(ps)
     if claims_cache is not None:
@@ -100,6 +105,7 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
         + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls) + "</urlset>\n")
     (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {ORIGIN}/sitemap.xml\n")
     shutil.copyfile(ROOT / "llms.txt", out / "llms.txt")
+    (out / "follow.json").write_text(json.dumps(used, indent=1) + "\n")
     for need in ("index.html", "read/index.html", "read/theme.css", "demo/index.html", "llms.txt"):
         if not (out / need).is_file():
             sys.exit(f"missing {need}")
@@ -114,9 +120,12 @@ def main() -> None:
                    "poppler), caching the results here")
     a.add_argument("--check-audits", action="store_true",
                    help="list only the audits whose address answers as an audit")
+    a.add_argument("--follow", action="store_true",
+                   help="show listings that follow a branch at its current commit (asks GitHub)")
     args = a.parse_args()
     build(Path(args.out).resolve(), Path(args.reader).resolve() if args.reader else reader_dir(),
-          Path(args.claims_cache).resolve() if args.claims_cache else None, args.check_audits)
+          Path(args.claims_cache).resolve() if args.claims_cache else None, args.check_audits,
+          args.follow)
 
 
 if __name__ == "__main__":
