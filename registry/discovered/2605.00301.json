@@ -1,0 +1,30 @@
+{
+ "id": "arxiv:2605.00301",
+ "title": "Primitive sets and von Mangoldt chains: Erdős Problem #1196 and beyond",
+ "authors": [
+  "Boris Alexeev",
+  "Kevin Barreto",
+  "Yanyang Li",
+  "Jared Duker Lichtman",
+  "Liam Price",
+  "Jibran Iqbal Shah",
+  "Quanyu Tang",
+  "Terence Tao"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2605.00301"
+ },
+ "formalisations": [
+  {
+   "repository": "plby/Erdos1196",
+   "commit": "66fa61583508ff44be533b1fbb0b9e40b5b46c5e",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

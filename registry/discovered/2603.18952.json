@@ -13,15 +13,6 @@
  },
  "formalisations": [
   {
-   "repository": "Asad-Shahab/erdos-809-lean",
-   "commit": "78c7f1a3b0476312576f868a45f02997dd4182cf",
-   "stated_by": {
-    "source": "formalization.yaml",
-    "file": "formalization.yaml"
-   },
-   "review_status": "self-assessed"
-  },
-  {
    "repository": "plasma-ai/erdos-809",
    "commit": "f2ad23743d6f58bc4ed087a2df122181ebefb099",
    "stated_by": {

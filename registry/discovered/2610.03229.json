@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2610.03229",
+ "title": "Non-freezing of the proximity digraph and non-pseudostable convergence in heterogeneous Hegselmann--Krause models: Counterexamples to conjectures and results of Mirtabatabaei and Bullo",
+ "authors": [
+  "Peter Hegarty",
+  "Damiano Ognissanti",
+  "Edvin Wedin"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2610.03229"
+ },
+ "formalisations": [
+  {
+   "repository": "JD-Jones-ASES/hk-heterogeneous-lean",
+   "commit": "c2d4c0b790210870f2818fc52a1c572937644a4b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

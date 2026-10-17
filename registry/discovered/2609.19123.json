@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2609.19123",
+ "title": "A proof of Chvátal's conjecture via a sharp correlation inequality",
+ "authors": [
+  "Fan Chang",
+  "Hong Liu",
+  "Miao Liu"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.19123"
+ },
+ "formalisations": [
+  {
+   "repository": "boonsuan/chvatal",
+   "commit": "c19ed3aaac9e42d446f963a862d39d8a09eddbf9",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

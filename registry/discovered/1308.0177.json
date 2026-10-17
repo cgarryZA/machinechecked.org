@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1308.0177",
+ "title": "Distinct distances on algebraic curves in the plane",
+ "authors": [
+  "János Pach",
+  "Frank de Zeeuw"
+ ],
+ "year": 2013,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1308.0177"
+ },
+ "formalisations": [
+  {
+   "repository": "mysticflounder/lean-formalizations",
+   "commit": "db02244c25aecd74eb96d9186c922387824c1258",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

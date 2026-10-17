@@ -15,7 +15,7 @@
  "formalisations": [
   {
    "repository": "teorth/pfr",
-   "commit": "ebe2d96230b1abb190f74592aace441a0f10fe09",
+   "commit": "61bbfc446a44a9cc4f3d54668fd909a824142e4b",
    "stated_by": {
     "source": "formalization.yaml",
     "file": "formalization.yaml"

@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2608.05142",
+ "title": "A bijective proof of a partition theorem of Berkovich and Uncu",
+ "authors": [
+  "Michal Mogielnicki",
+  "Ken Ono",
+  "Niels Voss",
+  "Jujian Zhang"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.05142"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/BerkovichUncu",
+   "commit": "03c85e361f04ff948020d015292c166239921581",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2606.24872",
+ "title": "A Resolution of Erdős Problem 768: the Sylow Divisor Condition",
+ "authors": [
+  "Eric Li"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2606.24872"
+ },
+ "formalisations": [
+  {
+   "repository": "ericlisg/erdos768-lean",
+   "commit": "e46ab245f1e5eb2d1f0b184874c4e32e02ad16c9",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

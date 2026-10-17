@@ -1,0 +1,30 @@
+{
+ "id": "arxiv:1810.12715",
+ "title": "On the Effectiveness of Interval Bound Propagation for Training Verifiably Robust Models",
+ "authors": [
+  "Sven Gowal",
+  "Krishnamurthy Dvijotham",
+  "Robert Stanforth",
+  "Rudy Bunel",
+  "Chongli Qin",
+  "Jonathan Uesato",
+  "Relja Arandjelovic",
+  "Timothy Mann",
+  "Pushmeet Kohli"
+ ],
+ "year": 2018,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1810.12715"
+ },
+ "formalisations": [
+  {
+   "repository": "AIQ-Kitware/aiq-veristressgt-formalization",
+   "commit": "9cee3d9ebfcb42e9a7d7220683eb4969a2b3b31b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

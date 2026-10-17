@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2607.12873",
+ "title": "Record compositions of alternating permutations and noncommutative symmetric functions",
+ "authors": [
+  "Evan Chen",
+  "Ken Ono",
+  "Michal Mogielnicki"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2607.12873"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/record-compositions",
+   "commit": "b1067cc48c378499be944d693c1665e5e9abd18e",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

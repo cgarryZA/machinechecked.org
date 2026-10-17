@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2609.13057",
+ "title": "Benign Loss Landscapes Can Coexist with Worst-Case Hardness",
+ "authors": [
+  "Zach Furman",
+  "Stephan Wäldchen",
+  "Yangda Bei",
+  "Liam Hodgkinson"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.13057"
+ },
+ "formalisations": [
+  {
+   "repository": "yangdabei/ttn-loss-landscape",
+   "commit": "b1f47991b435dc930e37e94106dbda1b1acf3821",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

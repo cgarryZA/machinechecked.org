@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1005.0982",
+ "title": "Incidences in Three Dimensions and Distinct Distances in the Plane",
+ "authors": [
+  "György Elekes",
+  "Micha Sharir"
+ ],
+ "year": 2010,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1005.0982"
+ },
+ "formalisations": [
+  {
+   "repository": "mysticflounder/lean-formalizations",
+   "commit": "db02244c25aecd74eb96d9186c922387824c1258",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

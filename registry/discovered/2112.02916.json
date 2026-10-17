@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2112.02916",
+ "title": "Three proofs of the Benedetto-Fickus theorem",
+ "authors": [
+  "Dustin G. Mixon",
+  "Tom Needham",
+  "Clayton Shonkwiler",
+  "Soledad Villar"
+ ],
+ "year": 2021,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2112.02916"
+ },
+ "formalisations": [
+  {
+   "repository": "JD-Jones-ASES/finite-quantum-designs-lean",
+   "commit": "5938504ecc632f9101d5ef17603879a08dad3866",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

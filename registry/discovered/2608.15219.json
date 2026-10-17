@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2608.15219",
+ "title": "Algebraic geometric framework of Rogers--Ramanujan identities",
+ "authors": [
+  "Yifeng Huang",
+  "Kenny Lau",
+  "Ken Ono",
+  "Peter Paule"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.15219"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/HJOa3Small",
+   "commit": "ca38932c74e34e43610e4ad1e18123babd4eae10",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

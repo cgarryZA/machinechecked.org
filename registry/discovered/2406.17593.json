@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2406.17593",
+ "title": "On several irrationality problems for Ahmes series",
+ "authors": [
+  "Vjekoslav Kovač",
+  "Terence Tao"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2406.17593"
+ },
+ "formalisations": [
+  {
+   "repository": "benkeene/erdos266",
+   "commit": "3d192862d0bfea32ca907c6b02ea3b2900d7f5c2",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

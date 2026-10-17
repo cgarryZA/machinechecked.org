@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:0912.4472",
+ "title": "Identifying the Rooted Species Tree from the Distribution of Unrooted Gene Trees under the Coalescent",
+ "authors": [
+  "Elizabeth S. Allman",
+  "James H. Degnan",
+  "John A. Rhodes"
+ ],
+ "year": 2009,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/0912.4472"
+ },
+ "formalisations": [
+  {
+   "repository": "vltanh/lean4-adr11",
+   "commit": "2db7f81359758bc49f52bc13c51f2640f8f2a7fd",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

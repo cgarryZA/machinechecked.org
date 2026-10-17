@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2605.13717",
+ "title": "Tight Sample Complexity Bounds for Entropic Best Policy Identification",
+ "authors": [
+  "Amer Essakine",
+  "Claire Vernade"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2605.13717"
+ },
+ "formalisations": [
+  {
+   "repository": "RemyDegenne/entropy-mdp",
+   "commit": "611f5528b4d64035dac74f92da9eaa7831150180",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

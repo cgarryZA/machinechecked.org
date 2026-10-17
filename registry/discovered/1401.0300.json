@@ -1,0 +1,33 @@
+{
+ "id": "arxiv:1401.0300",
+ "title": "Unsolved Problems in Group Theory. The Kourovka Notebook",
+ "authors": [
+  "E. I. Khukhro",
+  "V. D. Mazurov"
+ ],
+ "year": 2014,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1401.0300"
+ },
+ "formalisations": [
+  {
+   "repository": "pitmonticone/Kourovka",
+   "commit": "dcfdbdad8c434e30f6151fb3b4343364d70eeed4",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  },
+  {
+   "repository": "pitmonticone/Kourovka",
+   "commit": "dcfdbdad8c434e30f6151fb3b4343364d70eeed4",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

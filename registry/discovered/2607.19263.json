@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2607.19263",
+ "title": "Proving the Limits of Quantum Power Flow",
+ "authors": [
+  "Cameron Khanpour",
+  "Samuel Talkington"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2607.19263"
+ },
+ "formalisations": [
+  {
+   "repository": "eigenergy/quantum-power-flow-limits",
+   "commit": "ba9112b902e7a768e91c4b90190b948a04d56acd",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

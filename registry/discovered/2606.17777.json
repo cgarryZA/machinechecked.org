@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2606.17777",
+ "title": "On Response-Adaptive Targeting Strategies for Multi-Treatment Experiments",
+ "authors": [
+  "Redouane Yagouti",
+  "Rémy Degenne",
+  "Emilie Kaufmann"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2606.17777"
+ },
+ "formalisations": [
+  {
+   "repository": "RemyDegenne/alpha-rar",
+   "commit": "9a088a9ed38a7c0c54b0164f84014f580cc8aec8",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}
