@@ -169,3 +169,21 @@ def test_a_listing_that_follows_a_branch_is_shown_at_its_head(monkeypatch):
     monkeypatch.setattr(follow, "head", lambda repo, branch: None)
     ps[0]["formalisations"][0]["commit"] = "a" * 40
     assert follow.resolve(ps, log=lambda m: None) == {"o/r@main": "a" * 40}
+
+
+@pytest.mark.parametrize("code", ["formal.review-pending", "future.code", None])
+def test_audit_adapter_preserves_codes_without_interpreting_labels(monkeypatch, code):
+    import claims
+    base = "https://someone.github.io/audit/"
+    claim = {"id": "P:one", "paper": "P", "number": "Theorem 1", "file": "one.json",
+             "status": "deliberately misleading label", "class": "accepted"}
+    if code is not None:
+        claim["status_code"] = code
+    files = {base + "audit.json": {"data": "data/index.json"},
+             base + "data/index.json": {"release": "r-test", "claims": [claim]},
+             base + "data/claims/one.json": {"clauses": []}}
+    monkeypatch.setattr(claims, "fetch", lambda url, limit: json.dumps(files[url]).encode())
+    out = claims.audits_for(PAPER, {"Theorem 1"})
+    row = out["someone/proj"]["claims"][0]
+    assert row["status_code"] == code
+    assert row["status"] == claim["status"]

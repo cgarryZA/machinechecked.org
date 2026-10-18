@@ -130,7 +130,8 @@ def audits_for(paper: dict, numbers: set[str], log=print) -> dict:
                                   cl.get("refute") else [cl.get("spec")]) + cl.get("defs", [])
                         if x]
                 claims.append({"id": c["id"], "number": c["number"], "status": c["status"],
-                               "class": c["class"], "lean": list(dict.fromkeys(lean)),
+                               "class": c["class"], "status_code": c.get("status_code"),
+                               "lean": list(dict.fromkeys(lean)),
                                "link": papers.reader_url(base) + f"#/r/{index['release']}/read/"
                                        f"{c['paper']}/{quote(c['id'], safe='')}"})
             out[f["repository"]] = {"author": a.get("author"), "url": base,

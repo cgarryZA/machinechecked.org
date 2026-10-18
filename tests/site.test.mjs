@@ -11,6 +11,8 @@
 
 import { chromium } from "playwright";
 import http from "node:http";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -23,10 +25,25 @@ const types = { ".html": "text/html", ".json": "application/json", ".js": "text/
   ".mjs": "text/javascript", ".css": "text/css", ".woff2": "font/woff2", ".svg": "image/svg+xml",
   ".pdf": "application/pdf", ".webp": "image/webp" };
 
-// The site at /, the fixtures at /fixtures/, as audits published elsewhere would be.
+// The two-project case is synthetic: the live registry may contain only single-project papers.
+const synthetic = fs.mkdtempSync(path.join(os.tmpdir(), "mc-site-status-"));
+const made = spawnSync(process.env.PYTHON || "python3", ["-c", `
+import sys
+from pathlib import Path
+from prooflens.paper import write_paper_site
+write_paper_site(Path(sys.argv[1]), {
+    "id": "synthetic:two-projects", "title": "Synthetic project selection", "authors": [], "links": {},
+    "formalisations": [{"repository": "synthetic/alpha", "commit": "a" * 40},
+                       {"repository": "synthetic/beta", "commit": "b" * 40}]},
+    [], None, None, Path(sys.argv[2]))
+`, synthetic, path.join(site, "read")], { encoding: "utf8" });
+if (made.status !== 0) throw new Error(made.stderr);
+
+// The site, frozen audit fixtures, and generated test data are served from separate roots.
 const server = http.createServer((req, res) => {
   let url = decodeURIComponent(req.url.split("?")[0]);
-  const base = url.startsWith("/fixtures/") ? fixtures : site;
+  const base = url.startsWith("/synthetic/") ? synthetic : url.startsWith("/fixtures/") ? fixtures : site;
+  if (base === synthetic) url = url.slice("/synthetic".length);
   if (base === fixtures) url = url.slice("/fixtures".length);
   let p = path.join(base, url);
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, "index.html");
@@ -62,15 +79,13 @@ async function check(name, fn) {
   }
 }
 
-const two = pages.find((p) => p.index.projects.length > 1);
-await check(`a paper with two formalisations (${two?.slug})`, async (pg) => {
-  assert.ok(two, "the registry lists no paper with two formalisations");
-  await pg.goto(`${origin}/papers/${two.slug}/`);
+await check("a paper with two formalisations (synthetic)", async (pg) => {
+  await pg.goto(`${origin}/synthetic/`);
   const select = pg.locator("select[aria-label='Formalisation shown']");
   await select.waitFor();
-  assert.deepEqual(await select.locator("option").allTextContents(), two.index.projects);
-  await pg.selectOption("select[aria-label='Formalisation shown']", two.index.projects[1]);
-  assert.equal(new URL(pg.url()).searchParams.get("project"), two.index.projects[1]);
+  assert.deepEqual(await select.locator("option").allTextContents(), ["synthetic/alpha", "synthetic/beta"]);
+  await pg.selectOption("select[aria-label='Formalisation shown']", "synthetic/beta");
+  assert.equal(new URL(pg.url()).searchParams.get("project"), "synthetic/beta");
 });
 
 const plain = pages.find((p) => !audited(p) && p.index.claims.length);
@@ -104,6 +119,7 @@ await check("the demo page opens the toy audit in the site's reader", async () =
 
 await browser.close();
 server.close();
+fs.rmSync(synthetic, { recursive: true, force: true });
 if (failures) {
   console.log(`${failures} failure(s)`);
   process.exit(1);
