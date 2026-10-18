@@ -38,7 +38,8 @@ def test_registry_text_is_escaped_and_audits_open_in_the_reader(tmp_path):
     assert "<b>bold</b>" not in page and "&lt;b&gt;bold&lt;/b&gt;" in page
     assert "<script>x</script>" not in page
     assert "/read/?audit=https%3A%2F%2Fsomeone.github.io%2Faudit%2F" in page
-    assert "Audit published" in page and "does not endorse" in page
+    assert "Audit published" in page and "&lt;script&gt;x&lt;/script&gt;" in page
+    assert "does not endorse" not in page
 
 
 @pytest.mark.parametrize("bad", [
@@ -57,7 +58,7 @@ def test_a_repository_without_an_audit_says_nothing_about_lean(tmp_path):
     out = tmp_path / "out"
     papers.write(out, papers.load(_registry(tmp_path / "reg", p)))
     page = (out / "papers" / "2601.01234" / "index.html").read_text()
-    assert "Lean repository linked" in page and "says nothing about what Lean establishes" in page
+    assert "Lean repository linked" in page and "Audit: awaiting publication" in page
 
 
 def test_discovered_entries_merge_and_delisting_removes_one_listing(tmp_path):
@@ -139,16 +140,13 @@ def test_each_paper_has_a_badge_saying_what_is_listed(tmp_path):
     assert svg.startswith("<svg") and "Audit published" in svg and "verified" not in svg.lower()
 
 
-def test_an_audit_that_does_not_answer_is_not_listed(monkeypatch):
-    import build
-    ps = [{"id": "arxiv:2601.01234", "formalisations": [
-        {"repository": "a/b", "audits": [{"url": "https://live.example/"},
-                                         {"url": "https://not-yet.example/"}]}]}]
-    monkeypatch.setattr(build, "audit_answers", lambda url: url == "https://live.example/")
-    said = []
-    build.drop_unreachable_audits(ps, log=said.append)
-    assert ps[0]["formalisations"][0]["audits"] == [{"url": "https://live.example/"}]
-    assert said and "not-yet.example" in said[0]
+def test_an_unavailable_audit_remains_registered_and_has_a_visible_state(monkeypatch):
+    import claims
+    def fail(url, limit): raise OSError("offline")
+    monkeypatch.setattr(claims, "fetch", fail)
+    out = claims.audits_for(PAPER, log=lambda m: None)
+    assert out["someone/proj"]["state"] == "unavailable"
+    assert PAPER["formalisations"][0]["audits"]
 
 
 def test_a_listing_that_follows_a_branch_is_shown_at_its_head(monkeypatch):
@@ -171,19 +169,20 @@ def test_a_listing_that_follows_a_branch_is_shown_at_its_head(monkeypatch):
     assert follow.resolve(ps, log=lambda m: None) == {"o/r@main": "a" * 40}
 
 
-@pytest.mark.parametrize("code", ["formal.review-pending", "future.code", None])
-def test_audit_adapter_preserves_codes_without_interpreting_labels(monkeypatch, code):
+def test_old_audit_requests_a_rebuild_instead_of_inventing_results(monkeypatch):
     import claims
-    base = "https://someone.github.io/audit/"
-    claim = {"id": "P:one", "paper": "P", "number": "Theorem 1", "file": "one.json",
-             "status": "deliberately misleading label", "class": "accepted"}
-    if code is not None:
-        claim["status_code"] = code
-    files = {base + "audit.json": {"data": "data/index.json"},
-             base + "data/index.json": {"release": "r-test", "claims": [claim]},
-             base + "data/claims/one.json": {"clauses": []}}
-    monkeypatch.setattr(claims, "fetch", lambda url, limit: json.dumps(files[url]).encode())
-    out = claims.audits_for(PAPER, {"Theorem 1"})
-    row = out["someone/proj"]["claims"][0]
-    assert row["status_code"] == code
-    assert row["status"] == claim["status"]
+    monkeypatch.setattr(claims, "fetch", lambda url, limit: b'{"schema":"old"}')
+    out=claims.audits_for(PAPER, log=lambda m: None)
+    assert out["someone/proj"]["state"]=="incompatible"
+    assert "rebuild" in out["someone/proj"]["detail"]
+
+
+def test_audit_rebuild_at_same_commit_triggers_refresh(monkeypatch):
+    import follow
+    ps=[PAPER]
+    monkeypatch.setattr(follow, "published_audit_version", lambda url: "new-release")
+    k=follow.audit_key(PAPER["formalisations"][0]["audits"][0]["url"])
+    assert follow.moved(ps, {k:"old-release"}) == [f"{k}: publication changed"]
+    assert follow.moved(ps, {k:"new-release"}) == []
+    monkeypatch.setattr(follow, "published_audit_version", lambda url: None)
+    assert follow.moved(ps, {k:"new-release"}) == []

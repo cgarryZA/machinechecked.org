@@ -40,34 +40,6 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
-def audit_answers(url: str) -> bool:
-    """Whether an audit is published at `url`: its descriptor answers and says it is one."""
-    import json
-    import urllib.request
-    try:
-        req = urllib.request.Request(url.rstrip("/") + "/audit.json",
-                                     headers={"User-Agent": "machinechecked.org (audit check)"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            d = json.loads(r.read(1_000_000))
-        return str(d.get("schema", "")).startswith("machinechecked/audit@")
-    except Exception:
-        return False
-
-
-def drop_unreachable_audits(ps: list[dict], log=print) -> None:
-    """Leave out audits whose address does not answer as an audit (not published yet, or gone):
-    the page then says what is listed without linking a reader to nothing. A later build lists
-    them again once they answer."""
-    for p in ps:
-        for f in p["formalisations"]:
-            live = [a for a in f.get("audits") or [] if audit_answers(a["url"])]
-            for a in f.get("audits") or []:
-                if a not in live:
-                    log(f"{p['id']}: the audit at {a['url']} does not answer; not listed")
-            if "audits" in f:
-                f["audits"] = live
-
-
 def build(out: Path, reader: Path, claims_cache: Path | None = None,
           check_audits: bool = False, follow: bool = False) -> None:
     if out.exists():
@@ -76,37 +48,34 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
     shutil.copytree(reader, out / "read")
     import claims
     import papers
-    from prooflens.paper import write_paper_site
+    from prooflens.paper import write_paper_site, apply_audits, load_published_audit
     ps = papers.load(ROOT / "registry")
     # Listings that follow a branch are shown at its current commit; what was used is
     # published, so the check workflow can tell when to rebuild.
     import json
     import follow as fl
     used = fl.resolve(ps) if follow else {}
-    if check_audits:
-        drop_unreachable_audits(ps)
     if claims_cache is not None:
         claims_cache.mkdir(parents=True, exist_ok=True)
     # Each paper page's data, in the reader's standard format, beside the page (written first:
     # it replaces the page's directory).
     for p in ps:
         found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
-        try:
-            from prooflens.paper import apply_audits
-        except ImportError:          # a MachineChecked release before audits were read
-            apply_audits = None
-        if found and apply_audits:
-            # A published audit's own status for each statement it lists (read fresh: an
-            # audit changes without the PDF or the commit changing).
-            numbers = {c["number"] for c in found["claims"]}
-            found = {**found, "claims": apply_audits([dict(c) for c in found["claims"]],
-                                                     claims.audits_for(p, numbers))}
+        audits = claims.audits_for(p) if check_audits or claims_cache is not None else {}
+        for r, a in audits.items():
+            if a.get("version"):
+                used[fl.audit_key(a["url"])] = a["version"]
+        records = apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
+                               found.get("pdf_sha256") if found else None)
+        for f in p["formalisations"]:
+            if f["repository"] in audits:
+                a = audits[f["repository"]]
+                f["audit_state"] = {k: a[k] for k in ("state", "detail", "release", "commit") if k in a}
         # The reader's panel offers each listing's report link as the static page builds it.
         entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
                                          for f in p["formalisations"]]}
         write_paper_site(out / "papers" / papers.slug(p["id"]), entry,
-                         found["claims"] if found else [], found and found["page_size"],
-                         claims.view_pdf(p))
+                         records, found and found["page_size"], claims.view_pdf(p), audits=audits)
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(
@@ -129,7 +98,7 @@ def main() -> None:
     a.add_argument("--claims-cache", help="find each paper's statements in its PDF (needs "
                    "poppler), caching the results here")
     a.add_argument("--check-audits", action="store_true",
-                   help="list only the audits whose address answers as an audit")
+                   help="load and validate the registered audits")
     a.add_argument("--follow", action="store_true",
                    help="show listings that follow a branch at its current commit (asks GitHub)")
     args = a.parse_args()

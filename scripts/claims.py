@@ -73,7 +73,7 @@ def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
     fs = paper.get("formalisations", [])
     # Keyed also by MachineChecked's version: a newer one may find more in the same PDF.
     from importlib.metadata import version
-    key = hashlib.sha256(json.dumps([version("machinechecked"), url,
+    key = hashlib.sha256(json.dumps(["pdf-digest-v1", version("machinechecked"), url,
                                      [(f["repository"], f["commit"]) for f in fs]],
                                     sort_keys=True).encode()).hexdigest()[:20]
     hit = cache / f"{key}.json"
@@ -92,48 +92,24 @@ def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
         return None
     claims = paper_claims(anchors, paper["title"],
                           [(f, alignment(f["repository"], f["commit"])) for f in fs])
-    out = {"claims": claims, "page_size": list(size) if size else None}
+    out = {"claims": claims, "page_size": list(size) if size else None,
+           "pdf_sha256": hashlib.sha256(data).hexdigest()}
     hit.write_text(json.dumps(out))
     log(f"{paper['id']}: {len(claims)} statements, "
         f"{sum(1 for c in claims if c['links'])} linked by formalization.yaml")
     return out
 
 
-def audits_for(paper: dict, numbers: set[str], log=print) -> dict:
-    """For each listed formalisation with a published audit, the audit's claims whose printed
-    number is one of `numbers` (the statements found on the page), as the audit records them:
-    status, class, its Lean names and a link to the claim in the site's reader. Read as data
-    from the audit's own files; an audit that cannot be read is left out (its statements keep
-    the page's own wording)."""
-    from urllib.parse import quote
-    import papers
+def audits_for(paper: dict, log=print) -> dict:
+    """Complete public snapshots, or a visible import state for each registered audit."""
+    from prooflens.paper import load_published_audit
     out = {}
     for f in paper.get("formalisations", []):
         for a in f.get("audits", [])[:1]:
-            base = a["url"].rstrip("/") + "/"
             try:
-                desc = json.loads(fetch(base + "audit.json", 1_000_000))
-                index = json.loads(fetch(base + desc.get("data", "data/index.json"), 20_000_000))
-            except Exception as e:
-                log(f"{paper['id']}: audit {base} not read ({e})")
-                continue
-            claims = []
-            for c in index.get("claims", []):
-                if c.get("number") not in numbers or not c.get("file"):
-                    continue
-                try:
-                    rec = json.loads(fetch(base + "data/claims/" + c["file"], 5_000_000))
-                except Exception:
-                    rec = {}
-                lean = [x for cl in rec.get("clauses", [])
-                        for x in ([cl.get("accept"), cl.get("refute")] if cl.get("accept") or
-                                  cl.get("refute") else [cl.get("spec")]) + cl.get("defs", [])
-                        if x]
-                claims.append({"id": c["id"], "number": c["number"], "status": c["status"],
-                               "class": c["class"], "status_code": c.get("status_code"),
-                               "lean": list(dict.fromkeys(lean)),
-                               "link": papers.reader_url(base) + f"#/r/{index['release']}/read/"
-                                       f"{c['paper']}/{quote(c['id'], safe='')}"})
-            out[f["repository"]] = {"author": a.get("author"), "url": base,
-                                    "commit": f["commit"], "claims": claims}
+                out[f["repository"]] = load_published_audit(paper, f, a, fetch)
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                state = "unavailable" if isinstance(e, OSError) else "incompatible"
+                out[f["repository"]] = {"state": state, "detail": str(e), "url": a["url"]}
+                log(f"{paper['id']}: audit {state}: {e}")
     return out

@@ -6,42 +6,38 @@
 <title>MachineChecked — Read the paper. Inspect the Lean.</title>
 <meta name="description" content="Read mathematical papers alongside Lean proofs. Explore linked declarations, checked proofs and the correspondence still awaiting review.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%232f6f73' stroke-width='3'/%3E%3Cpath d='M20 20l8 8' stroke='%232f6f73' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://machinechecked.org/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MachineChecked — Read the paper. Inspect the Lean.">
+<meta property="og:description" content="Compare the paper, complete readable Lean and exact Lean. Explore proof evidence and recorded reviews.">
+<meta property="og:url" content="https://machinechecked.org/">
+<meta property="og:image" content="https://machinechecked.org/preview-light.webp">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/read/theme.css">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans); }
   a { color: var(--accent); }
   .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
-  header.top { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
+  header.top { display: flex; align-items: center; gap: 12px; padding: 14px 0; flex-wrap: wrap; }
   .brand { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-weight: 600; font-size: 20px; color: var(--text); text-decoration: none; }
   .brand svg { color: var(--accent); }
-  nav { margin-left: auto; display: flex; gap: 18px; font-size: 15px; }
+  nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 12px 18px; font-size: 15px; }
   nav a { color: var(--muted); text-decoration: none; white-space: nowrap; }
   nav a:hover { color: var(--accent); }
   .hero { padding: 62px 0 44px; }
   .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-  .claim-caption { grid-column: 1 / -1; margin: -4px 0 0; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
   h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(32px, 6vw, 52px); line-height: 1.1; margin: 0 0 18px; letter-spacing: -0.01em; }
   .lede { font-size: 19px; color: var(--muted); max-width: 700px; margin: 0 0 28px; }
   .cta { display: flex; gap: 12px; flex-wrap: wrap; }
   .btn { display: inline-block; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--accent); text-decoration: none; font-weight: 500; }
-  .btn.primary { background: var(--accent); color: var(--surface); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
   .btn.ghost { color: var(--accent); }
   .preview { margin: 40px 0 0; }
   .preview a { display: block; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.08); }
   .preview img { display: block; width: 100%; height: auto; }
   .real { color: var(--muted); font-size: 15px; max-width: 760px; margin: 14px 0 0; }
   .preview figcaption { font-size: 13px; color: var(--faint); margin-top: 8px; }
-  .claim { margin: 44px 0 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .claim .lbl { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
-  .claim .paper { font-family: var(--serif); }
-  .claim code { font-family: var(--mono); font-size: 14px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
-  .rows { list-style: none; margin: 0; padding: 0; font-size: 15px; }
-  .rows li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }
-  .rows li:last-child { border-bottom: 0; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; transform: translateY(-1px); }
-  .ok { background: var(--st-proved); } .warn { background: var(--st-open); } .no { background: var(--faint); }
-  .note { font-size: 13px; color: var(--faint); margin: 6px 0 0; }
   section { padding: 36px 0; border-top: 1px solid var(--border); }
   h2 { font-family: var(--serif); font-weight: 600; font-size: 26px; margin: 0 0 16px; }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
@@ -50,11 +46,11 @@
   .n { font-family: var(--serif); color: var(--accent); font-size: 22px; display: block; margin-bottom: 4px; }
   pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 14px/1.6 var(--mono); margin: 0 0 12px; }
   .small { font-size: 15px; color: var(--muted); }
-  .disclaimer { background: var(--surface-2); border-radius: 10px; padding: 14px 18px; font-size: 15px; color: var(--muted); }
   footer { padding: 28px 0 48px; font-size: 14px; color: var(--faint); display: flex; gap: 16px; flex-wrap: wrap; }
   footer a { color: var(--faint); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   @media (max-width: 720px) {
-    .claim, .grid { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr; }
     nav { gap: 12px; }
     .hero { padding: 32px 0 24px; }
   }
@@ -82,60 +78,42 @@
       Select a statement to explore its Lean counterpart, see what has been proved,
       and find what still needs review.</p>
     <div class="cta">
-      <a class="btn primary" href="demo/">Explore the demo</a>
-      <a class="btn ghost" href="#use">Use it on your paper</a>
+      <a class="btn primary" href="papers/">Browse papers</a>
+      <a class="btn ghost" href="demo/#/read/T/T%3Athm%3Aeven-add?compare=1">Try the comparison</a>
     </div>
 
     <figure class="preview">
-      <a href="demo/#/read/T/T%3Aprop%3Apred">
+      <a href="demo/#/read/T/T%3Athm%3Aeven-add?compare=1">
         <picture>
+          <source srcset="preview-mobile-dark.webp" width="366" height="614" media="(max-width: 700px) and (prefers-color-scheme: dark)">
+          <source srcset="preview-mobile-light.webp" width="366" height="614" media="(max-width: 700px)">
           <source srcset="preview-dark.webp" media="(prefers-color-scheme: dark)">
-          <img src="preview-light.webp" width="1360" height="820" alt="The reader: the paper in the middle with a marker beside each claim, the contents on the left, and on the right Proposition 2.3 with its two Lean statements, the printed one refuted and the corrected one proved.">
+          <img src="preview-light.webp" width="1360" height="620" alt="Theorem 2.1: the paper, complete readable Lean statement and exact Lean shown together.">
         </picture>
       </a>
-      <figcaption>The demo’s synthetic paper, open at Proposition 2.3. Click to explore it.</figcaption>
+      <figcaption>Compare Theorem 2.1, inspect a definition, and follow its proof evidence.</figcaption>
     </figure>
-    <p class="real">On a real paper: <a href="papers/2608.23203/"><em>Well-posedness of fully coupled McKean–Vlasov FBSDEs with jumps</em></a> (Feng and Garry, arXiv:2608.23203), beside its Lean formalisation and, once its author’s audit is published, that audit: which claims Lean proves, which are open, which are refuted as printed with a corrected statement, and the reviews behind them. An audit is its author’s record; MachineChecked shows it and does not endorse it.</p>
+    <p class="real">Explore <a href="papers/2608.23203/"><em>Well-posedness of fully coupled McKean–Vlasov FBSDEs with jumps</em></a> (Feng and Garry, arXiv:2608.23203) and its Lean audit.</p>
 
-    <div class="claim" aria-label="An example claim">
-      <div>
-        <p class="lbl">In the paper</p>
-        <p class="paper"><strong>Proposition 2.3.</strong> <em>Every natural number is strictly greater than its predecessor n − 1.</em></p>
-        <p class="note">An intentionally false example from the synthetic demo. In Lean’s natural numbers, 0 − 1 = 0.</p>
-      </div>
-      <div>
-        <p class="lbl">What was established</p>
-        <ul class="rows">
-          <li><span class="dot no"></span>Printed statement: refuted in Lean</li>
-          <li><span class="dot ok"></span>Corrected statement (n ≥ 1): proved in Lean</li>
-          <li><span class="dot warn"></span>Correspondence: author review only</li>
-        </ul>
-      </div>
-      <p class="claim-caption">A Lean proof and its correspondence to the paper are separate questions. MachineChecked shows both, without treating a link as a review.</p>
-    </div>
   </div>
 
   <section>
     <h2>From paper to proof</h2>
     <div class="grid">
-      <div><span class="n">01</span><h3>Open a paper</h3><p>Start in a built Lean project. MachineChecked finds the paper, its numbered statements and the project's Lean declarations.</p></div>
-      <div><span class="n">02</span><h3>Connect the statements</h3><p>Follow existing <code>\lean{...}</code> tags, inspect suggestions, or choose a Lean declaration yourself. A link is never presented as a mathematical review.</p></div>
-      <div><span class="n">03</span><h3>Read, review, share</h3><p>Browse the two side by side, record reviews if you wish, and export a standalone HTML reader for others. Anyone reading it can raise an issue on a claim, in the audit’s own GitHub repository, with the claim and its Lean filled in.</p></div>
+      <div><span class="n">01</span><h3>Open a paper</h3><p>Browse the catalogue or open a paper in your Lean project. Select a numbered statement to begin.</p></div>
+      <div><span class="n">02</span><h3>Compare the statements</h3><p>Read the paper, every formal hypothesis and the exact Lean together. Open the definitions that give the statement its meaning.</p></div>
+      <div><span class="n">03</span><h3>Read, review, share</h3><p>Compare the statements, record a review, and share the HTML reader.</p></div>
     </div>
   </section>
 
   <section id="use">
-    <h2>Get started</h2>
+    <h2>Use it on your paper</h2>
     <p class="small">In your Lean project's directory, build the modules you want to inspect and run:</p>
     <pre>lake build
 uvx machinechecked view</pre>
-    <p class="small"><strong>It runs on your computer, in your Lean project.</strong> It reads your paper and your compiled Lean, opens the reader in your browser, and keeps its results beside your project. No account, registration or upload is needed; publishing an audit is a separate step you choose to take.</p>
-    <p class="small">Python 3.11+, Lean and TeX Live are needed for a LaTeX paper; the compiled web reader is included. No custom claim registry or Node installation is required. Use <code>machinechecked build</code> to export a standalone HTML file.</p>
+    <p class="small">Runs locally in your Lean project. Use <code>uvx machinechecked build</code> to export an HTML reader.</p>
+    <p class="small">Requires Python 3.11+, Lean, and TeX Live for LaTeX or Poppler for PDFs.</p>
     <p><a href="https://github.com/cgarryZA/MachineChecked/blob/main/docs/GETTING_STARTED.md">Read the setup guide →</a></p>
-  </section>
-
-  <section>
-    <div class="disclaimer">MachineChecked checks the Lean mechanically: exact statement types, axioms, fingerprints, proof status. It cannot check that a Lean statement says what the paper says; that takes a reviewer. An audit is its author’s work, recording what they linked, checked and reviewed under their name; MachineChecked does not endorse it, and anyone can report what looks wrong. The demo uses a synthetic paper.</div>
   </section>
 
   <footer>

@@ -54,7 +54,13 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
-          node tests/site.test.mjs _site
+          SHOTS="$RUNNER_TEMP/site-shots" node tests/site.test.mjs _site
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-screenshots
+          path: ${{ runner.temp }}/site-shots
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
