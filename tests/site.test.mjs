@@ -5,9 +5,10 @@
 // browser binary if Playwright has none.
 //
 // Cases: a paper with two formalisations (the selector, and one project's links at a time), a
-// paper with no audit, and audits opened in the reader from their data: the toy audit as this
-// version exports it is the demo's; an export frozen from an older version (tests/fixtures/)
-// must keep opening.
+// paper with no audit, a paper page with a published audit (a synthetic export of the toy paper,
+// tests/fixtures/paper-audit/, joined by the site's own build code), and audits opened in the
+// reader from their data: the toy audit as this version exports it is the demo's; an export
+// frozen from an older version (tests/fixtures/) must keep opening.
 
 import { chromium } from "playwright";
 import http from "node:http";
@@ -40,11 +41,14 @@ write_paper_site(Path(sys.argv[1]), {
 if (made.status !== 0) throw new Error(made.stderr);
 
 // The site, frozen audit fixtures, and generated test data are served from separate roots.
+const audited_site = fs.mkdtempSync(path.join(os.tmpdir(), "mc-site-audited-"));
 const server = http.createServer((req, res) => {
   let url = decodeURIComponent(req.url.split("?")[0]);
-  const base = url.startsWith("/synthetic/") ? synthetic : url.startsWith("/fixtures/") ? fixtures : site;
+  const base = url.startsWith("/synthetic/") ? synthetic : url.startsWith("/fixtures/") ? fixtures
+    : url.startsWith("/audited/") ? audited_site : site;
   if (base === synthetic) url = url.slice("/synthetic".length);
   if (base === fixtures) url = url.slice("/fixtures".length);
+  if (base === audited_site) url = url.slice("/audited".length);
   let p = path.join(base, url);
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, "index.html");
   if (!p.startsWith(base) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
@@ -53,6 +57,37 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(p).pipe(res);
 }).listen(0);
 const origin = `http://127.0.0.1:${server.address().port}`;
+
+// A paper page with a published audit, built by the site's own code (scripts/build.py) from the
+// synthetic audit fixture, as a build fetches it; the displayed PDF is the audited one.
+const toyPdf = `${origin}/fixtures/paper-audit/toy/data/papers/T.pdf`;
+const built = spawnSync(process.env.PYTHON || "python3", ["-c", `
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[4])
+import build, claims, papers
+out, fixture, pdf = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+def fetch(url, limit=100_000_000):
+    if url.startswith("https://audit.example/toy/"):
+        return (fixture / url[len("https://audit.example/toy/"):]).read_bytes()
+    if url == "https://paper.example/toy.pdf":
+        return (fixture / "data" / "papers" / "T.pdf").read_bytes()
+    raise OSError("offline")
+claims.fetch, claims.alignment, claims.view_pdf = fetch, lambda r, c: None, lambda p: pdf
+p = {"id": "curated:toy-paper", "title": "A Toy Paper on Even and Triangular Numbers",
+     "authors": ["A. Author"], "listing": "curated", "links": {"pdf": "https://paper.example/toy.pdf"},
+     "formalisations": [{"repository": "cgarryZA/MachineChecked", "commit": "9" * 40,
+                         "stated_by": {"source": "curated"},
+                         "audits": [{"url": "https://audit.example/toy/", "author": "A. Author"}]}]}
+(out / "cache").mkdir()
+found = claims.claims_for(p, out / "cache", log=lambda m: None)
+index = build.write_paper(out, p, found, claims.audits_for(p, log=lambda m: None))
+assert index["audits"]["cgarryZA/MachineChecked"]["state"] == "loaded", index["audits"]
+papers.write(out, [p], Path(sys.argv[5]).read_text(encoding="utf-8"))
+`, audited_site, path.join(fixtures, "paper-audit", "toy"), toyPdf, path.join(here, "..", "scripts"),
+  path.join(site, "read", "index.html")], { encoding: "utf8" });
+if (built.status !== 0) throw new Error(built.stderr);
+const toyIndex = JSON.parse(fs.readFileSync(path.join(audited_site, "papers", "toy-paper", "data", "index.json")));
 
 // The paper pages, from the data written beside each.
 const pages = fs.readdirSync(path.join(site, "papers"), { withFileTypes: true })
@@ -88,6 +123,33 @@ await check("a paper with two formalisations (synthetic)", async (pg) => {
   assert.deepEqual(await select.locator("option").allTextContents(), ["synthetic/alpha", "synthetic/beta"]);
   await pg.selectOption("select[aria-label='Formalisation shown']", "synthetic/beta");
   assert.equal(new URL(pg.url()).searchParams.get("project"), "synthetic/beta");
+});
+
+await check("a paper page shows its published audit's statuses at the canonical address", async (pg) => {
+  await pg.goto(`${origin}/audited/papers/toy-paper/`);
+  await pg.waitForSelector("nav.toc li");
+  // Each listed claim carries its audit's status, for the audit's own project; scope decisions
+  // are listed on request.
+  const shown = await pg.locator(".reader-layout > nav.toc li a").evaluateAll((as) =>
+    as.map((a) => [decodeURIComponent(a.getAttribute("href").split("/").pop()), a.title]));
+  const expected = toyIndex.claims.filter((c) => !c.status_code.startsWith("scope."))
+    .map((c) => [c.id, c.by_project["cgarryZA/MachineChecked"].status]);
+  assert.deepEqual(shown, expected);
+  assert.ok(shown.some(([, s]) => s === "formal: accepted") && shown.some(([, s]) => s === "formal: open"));
+  assert.doesNotMatch(await pg.locator("body").textContent(), /no audit published/);
+});
+
+await check("a deep link to an audited claim opens the audit's record at its exact place", async (pg) => {
+  const claim = toyIndex.claims.find((c) => c.status_code === "formal.accepted");
+  await pg.goto(`${origin}/audited/papers/toy-paper/#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
+  const side = pg.locator(".reader-layout > aside.side");
+  await side.getByText(claim.number, { exact: false }).first().waitFor();
+  // The audit's record of the claim, at the audited revision and its exact place.
+  const text = await side.textContent();
+  assert.match(text, /audited revision/i);
+  assert.match(text, /exact location/);
+  assert.doesNotMatch(text, /approximate/i);
+  assert.equal(new URL(pg.url()).pathname, "/audited/papers/toy-paper/");
 });
 
 const plain = pages.find((p) => !audited(p) && p.index.claims.length);
@@ -172,6 +234,7 @@ for (const width of [1360, 390, 320]) await check(`homepage layout and preview a
 await browser.close();
 server.close();
 fs.rmSync(synthetic, { recursive: true, force: true });
+fs.rmSync(audited_site, { recursive: true, force: true });
 if (failures) {
   console.log(`${failures} failure(s)`);
   process.exit(1);

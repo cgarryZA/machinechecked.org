@@ -1,0 +1,26 @@
+{
+ "author": "MachineChecked (synthetic demo)",
+ "created": "2026-10-19T10:37:36+00:00",
+ "data": "data/index.json",
+ "formalisation": {
+  "commit": "956fe0b95b0b16794dd7d0a52827ec9bd260f745",
+  "repository": "cgarryZA/MachineChecked",
+  "repository_private": false,
+  "toolchain": "leanprover/lean4:v4.32.0"
+ },
+ "issues": "cgarryZA/MachineChecked",
+ "papers": [
+  {
+   "id": "curated:toy-paper",
+   "key": "T",
+   "revision": "956fe0b95b0b16794dd7d0a52827ec9bd260f745",
+   "title": "A Toy Paper on Even and Triangular Numbers",
+   "url": null,
+   "version": null
+  }
+ ],
+ "release": "r-29deb108a22e",
+ "schema": "machinechecked/audit@1",
+ "site_url": "https://machinechecked.org/demo/",
+ "tool": "machinechecked"
+}

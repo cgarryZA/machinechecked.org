@@ -29,7 +29,8 @@ npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
 The `Site` workflow tests and builds each pull request, then deploys `main` to GitHub Pages.
-Browser tests cover project switching, audit import errors, catalogue queries and filters,
+Browser tests cover project switching, a paper page with a published audit (statuses, deep links,
+exact places), audit import errors, catalogue queries and filters,
 external search failures and cancellation, and responsive homepage previews.
 Synthetic fixtures exercise the current data contract; older data requests an audit rebuild.
 
