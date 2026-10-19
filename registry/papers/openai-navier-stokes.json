@@ -35,7 +35,7 @@
   },
   {
    "repository": "cgarryZA/NavierStokesAndEuler",
-   "commit": "a7d76f4241d47389bce814a9e408ed92cb199ffa",
+   "commit": "d1961e58748d9d2a13ff766b462ebfc40002e243",
    "stated_by": {
     "source": "formalization.yaml",
     "file": "formalization.yaml",
@@ -47,7 +47,7 @@
      "url": "https://cgarryza.github.io/NavierStokesAndEuler/",
      "author": "Christian Garry",
      "issues": "cgarryZA/NavierStokesAndEuler",
-     "note": "Links 66 of the paper's 79 numbered statements, each with a coverage note."
+     "note": "Links 77 of the paper's 79 numbered statements, each with a coverage reading (full, composed, partial or changed)."
     }
    ]
   }
