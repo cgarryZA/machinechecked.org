@@ -108,8 +108,11 @@ def test_the_build_writes_each_paper_page_in_the_reader_s_format(tmp_path, monke
     (reader / "index.html").write_text(READER)
     (reader / "theme.css").write_text(":root { --bg: #fff; }")
     monkeypatch.setattr(build, "ROOT", ROOT)
+    import prepare
+    snapshot = tmp_path / "snapshot"
+    prepare.prepare(ROOT / "registry", snapshot, None, offline=True, log=lambda m: None)
     out = tmp_path / "out"
-    build.build(out, reader)
+    build.build(out, reader, snapshot)
     for p in papers.load(ROOT / "registry"):
         d = out / "papers" / papers.slug(p["id"])
         index = json.loads((d / "data" / "index.json").read_text())

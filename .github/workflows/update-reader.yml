@@ -1,9 +1,9 @@
 name: Propose reader update
 
-# Daily: when PyPI has a MachineChecked release newer than the one TOOL_VERSION pins, pushes a
-# branch pinning that exact version, opens a pull request for it, and starts the Site workflow
-# on the branch, which builds the site with it and tests it in a browser (tests/site.test.mjs)
-# but deploys only from main. Nothing reaches the live site until the pull request is merged.
+# Daily: when PyPI has a MachineChecked release newer than the one TOOL_VERSION pins, and pip can
+# install it, pushes a branch changing only TOOL_VERSION to that exact version, opens a pull
+# request for it, and starts the Site workflow on the branch, which builds the site with it and
+# tests it in a browser (tests/site.test.mjs) but deploys only from main. Nothing reaches the live site until the pull request is merged.
 # (A pull request opened by this workflow's token starts no checks by itself, hence the explicit
 # run; its result shows on the pull request's commit.) Needs Settings > Actions > General >
 # "Allow GitHub Actions to create and approve pull requests".
@@ -42,8 +42,22 @@ jobs:
           )
           echo "newer=$newer" >> "$GITHUB_OUTPUT"
           echo "pinned $pinned, latest release $latest: newer=$newer"
-      - name: Open a pull request pinning it, and test it
+      # PyPI's JSON can name a release before pip can install it. Propose it only once it
+      # installs; until then this run proposes nothing and a later run does.
+      - name: Can it be installed?
+        id: ok
         if: steps.v.outputs.newer == 'yes'
+        env:
+          V: ${{ steps.v.outputs.latest }}
+        run: |
+          if python3 -m pip download -q --no-deps -d "$RUNNER_TEMP/release" "machinechecked==$V"; then
+            echo "installable=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::machinechecked $V is not installable from PyPI yet; a later run proposes it"
+            echo "installable=no" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open a pull request pinning it, and test it
+        if: steps.v.outputs.newer == 'yes' && steps.ok.outputs.installable == 'yes'
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ steps.v.outputs.latest }}

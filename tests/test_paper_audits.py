@@ -18,6 +18,7 @@ import build  # noqa: E402
 import claims  # noqa: E402
 import follow  # noqa: E402
 import papers  # noqa: E402
+import prepare  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 AUDIT = FIXTURES / "paper-audit" / "toy"
@@ -166,7 +167,7 @@ def test_an_audit_that_fails_to_load_does_not_rebuild_the_site_on_every_check(
     monkeypatch.setattr(claims, "fetch", fetch)
     audits = claims.audits_for(p, log=lambda m: None)
     assert audits[REPO]["state"] == "incompatible"
-    used = build.audit_versions(audits)
+    used = prepare.audit_versions(audits)
     assert follow.moved([p], used) == []
     state["descriptor"]["release"] = "r-republished"
     assert follow.moved([p], used) == [f"{follow.audit_key(AUDIT_URL)}: publication changed"]
@@ -175,6 +176,6 @@ def test_an_audit_that_fails_to_load_does_not_rebuild_the_site_on_every_check(
 def test_a_loaded_audit_records_the_publication_it_was_read_at(served):
     audits = claims.audits_for(paper(), log=lambda m: None)
     assert audits[REPO]["state"] == "loaded"
-    used = build.audit_versions(audits)
+    used = prepare.audit_versions(audits)
     assert used == {follow.audit_key(AUDIT_URL): audits[REPO]["version"]}
     assert follow.moved([paper()], used) == []

@@ -16,15 +16,19 @@ explicit audited PDF revision. `/read/?audit=<address>` opens a published audit 
 | `registry/papers/*.json` | one file per paper: where it is, the Lean repositories that formalise it and who says so, and published audits (`registry/schema.json`) |
 | `scripts/papers.py` | builds `/papers/` and a plain HTML page per paper from the registry |
 | `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
-| `scripts/build.py` | assembles the site into `_site/`: `site/`, the reader at `/read/`, `sitemap.xml`, `robots.txt`, `llms.txt` |
+| `scripts/prepare.py` | the build's network step: reads followed branches' heads, the papers' statements and the registered audits into a snapshot |
+| `scripts/build.py` | renders a snapshot into `_site/`, without the network: `site/`, the reader at `/read/`, the paper pages' data, `sitemap.xml`, `robots.txt`, `llms.txt`, `follow.json`, `build.json` |
 | `TOOL_VERSION` | the MachineChecked release (or commit) whose reader the site serves |
+| `.github/actions/machinechecked` | installs and checks the pinned package, for every workflow |
 | `llms.txt` | a short description for language models |
 
 ## Build
 
 ```sh
 pip install "machinechecked==$(cat TOOL_VERSION)"   # or, for a commit: "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@<commit>"
-python3 scripts/build.py --out _site --claims-cache .cache/claims
+python3 scripts/build.py --check-package             # the installed package is the pinned one
+python3 scripts/prepare.py --out .cache/snapshot --claims-cache .cache/claims [--follow]   # or --offline
+python3 scripts/build.py --snapshot .cache/snapshot --out _site
 npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
@@ -57,9 +61,63 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 (`listing: "curated"`). An audit is added by its address (where its `audit.json` is) and its
 author's name; the page opens it in the reader.
 
-The reader is updated by pull request: the daily `Propose reader update` workflow notices a newer
-MachineChecked release on PyPI, opens a pull request pinning it, and runs the Site workflow on it
-(build and browser test, no deploy). Merging it deploys. To test an unreleased commit, pin the
-commit by hand. The landing page's
-screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from the built site's
-reader and an exported audit; how to run it is at the top of the script.
+## How the site is built
+
+```
+GitHub code search ── discover.py (daily) ──▶ registry/discovered/*.json ─┐
+maintainers ────────────────────────────────▶ registry/papers/*.json ─────┤ papers.load: the
+                                                                          │ one validation
+                                                                          ▼
+prepare.py (network) ── followed branch heads (follow.resolve)
+                     ── each paper's PDF → its statements (claims.claims_for, cached by
+                        PDF address, listing commits and package version)
+                     ── each listing's formalization.yaml at its commit (claims.alignment)
+                     ── each registered audit (claims.audits_for → prooflens load_published_audit)
+                     ──▶ snapshot: registry as shown, statements, audits, follow.json data
+build.py (no network) ── per paper: prooflens apply_audits + write_paper_site → data/
+                      ── papers.write → plain HTML pages, list, badges
+                      ──▶ _site/ (+ /follow.json, /build.json) ── browser test ── Pages
+follow.py check (every 15 min) ── compares /follow.json with heads and audit publications now
+```
+
+| Step | Owns | Network |
+|---|---|---|
+| `discover.py` | which repositories state they formalise an arXiv paper | GitHub, arXiv |
+| `papers.load` / `papers.validate` | the registry: schema validation, merging, delisting | none |
+| `prepare.py` | everything read from the network for a build, and how each read failed | papers' PDFs, GitHub, audit hosts |
+| MachineChecked (`prooflens.published`, `prooflens.paper`) | what a published audit means: its validation, statuses, places and editions | none (given the site's `fetch`) |
+| `build.py` | the static site, from a snapshot | none |
+| `follow.py check` | whether a rebuild is due | GitHub, audit hosts, the live site |
+
+All reads go through `claims.fetch` (discovery has its own client for GitHub's search API). A read
+that fails is recorded as that failure: a PDF that was not read has no statements, and an audit
+that did not load shows "Audit unavailable" or "Audit update required", never "no audit
+published". `prepare.py --offline` writes a snapshot that reads nothing.
+
+## Release
+
+The reader has one source: the MachineChecked package. The site serves its built reader unchanged
+at `/read/`, at the release `TOOL_VERSION` pins, and has no reader code of its own.
+
+```
+MachineChecked release on PyPI (web/ built and committed in the package)
+  │  Propose reader update (daily): newer and installable → a branch changing only TOOL_VERSION
+  ▼
+pull request ── Site workflow: install the pin, check it (build.py --check-package),
+  │               pytest, build, browser test; no deploy
+  ▼ merge
+main ── Site workflow: the same, then deploy to GitHub Pages
+          /read/       the package's reader, copied unchanged
+          /build.json  site commit, TOOL_VERSION, installed version, reader digest,
+                       each listing's commit and the audit release shown
+          /follow.json followed branches' commits and audits' publications, for the follow check
+```
+
+Every workflow installs the package the same way (`.github/actions/machinechecked`). The build
+stops, naming what is missing, if the installed package lacks what the site uses. The reader
+update proposes a release only once pip can install it. The `Follow listed branches` check rebuilds
+when a followed branch moves or an audit is republished. If the check cannot run, the workflow
+fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
+
+The landing page's screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from
+the built site's reader and an exported audit; how to run it is at the top of the script.
