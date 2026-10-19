@@ -36,18 +36,28 @@ SYM = {
     "otimes": "⊗", "circ": "∘", "forall": "∀", "exists": "∃", "emptyset": "∅", "hbar": "ℏ",
     "star": "⋆", "ast": "∗", "prime": "′", "wedge": "∧", "vee": "∨", "neg": "¬", "langle": "⟨", "rangle": "⟩", "|": "‖", "aleph": "ℵ",
     "{": "{", "}": "}", ",": " ", ";": " ", ":": " ", "!": "", " ": " ", "%": "%", "&": "&",
+    "#": "#", "_": "_", "$": "$",
     "log": "log", "exp": "exp", "sin": "sin", "cos": "cos", "lim": "lim", "max": "max",
     "min": "min", "sup": "sup", "inf": "inf", "det": "det", "dim": "dim", "deg": "deg",
 }
 ACCENT = {"'": "\u0301", "`": "\u0300", '"': "\u0308", "^": "\u0302", "~": "\u0303",
           "H": "\u030b", "c": "\u0327", "v": "\u030c", "=": "\u0304", "u": "\u0306"}
+# Accents in mathematics, as combining characters: \bar{Q} is Q̅. The arrow of \vec has no
+# combining form common fonts draw, so \vec{v} reads vec(v).
+MATH_ACCENT = {"bar": "\u0305", "overline": "\u0305", "hat": "\u0302", "widehat": "\u0302",
+               "tilde": "\u0303", "widetilde": "\u0303", "vec": None, "dot": "\u0307",
+               "ddot": "\u0308"}
+OPERATORS = ("log", "exp", "sin", "cos", "lim", "max", "min", "sup", "inf", "det", "dim", "deg")
 FONTS = {"mathbb": BB, "Bbb": BB, "mathcal": CAL, "mathfrak": FRAK}
 PLAIN = ("mathrm", "text", "textrm", "mathit", "mathbf", "textbf", "textit", "emph",
          "operatorname", "mathsf", "boldsymbol", "bm", "mathbold")
 
 
 def _group(s: str, i: int) -> tuple[str, int]:
-    """The argument at `s[i]`: a braced group or one character; and the index after it."""
+    """The argument at `s[i]` (after any spaces): a braced group, a command or one character;
+    and the index after it."""
+    while i < len(s) and s[i] == " ":
+        i += 1
     if i < len(s) and s[i] == "{":
         depth, j = 0, i
         while j < len(s):
@@ -79,6 +89,15 @@ def _math(s: str) -> str:
             if name in FONTS:
                 arg, i = _group(s, i)
                 out.append("".join(FONTS[name].get(c, c) for c in _math(arg)))
+            elif name in MATH_ACCENT:
+                arg, i = _group(s, i)
+                t = _math(arg)
+                # An overline covers every letter; another accent sits on one letter only.
+                if MATH_ACCENT[name] and (len(t) == 1 or name in ("bar", "overline")):
+                    out.append(unicodedata.normalize(
+                        "NFC", "".join(c + MATH_ACCENT[name] for c in t)))
+                else:
+                    out.append(f"{name}({t})")
             elif name in PLAIN:
                 arg, i = _group(s, i)
                 out.append(_math(arg))
@@ -88,6 +107,8 @@ def _math(s: str) -> str:
                 a, i = _group(s, i)
                 b, i = _group(s, i)
                 out.append(f"{_math(a)}/{_math(b)}")
+            elif name in OPERATORS and out and out[-1][-1:].isalnum():
+                out.append(" " + name)  # \frac{1}{2}\log p is 1/2 log p
             else:
                 out.append(SYM.get(name, name))
         elif ch in "^_":
@@ -110,6 +131,8 @@ def tex_text(s: str) -> str:
         base = m.group(2) or m.group(3) or ""
         return unicodedata.normalize("NFC", base + ACCENT[m.group(1)]) if base else ""
     s = re.sub(r"\\([\'`\"^~=]|[Hcvu](?=[{\s]))\s*(?:\{(\w?)\}|(\w))", accent, s)
+    # An escaped dollar is a dollar sign, not the start of mathematics.
+    s = s.replace("\\$", "\0")
     parts = re.split(r"(\$\$?[^$]*\$\$?|\\\(.*?\\\))", s)
     out = []
     for p in parts:
@@ -117,5 +140,8 @@ def tex_text(s: str) -> str:
             out.append(_math(p.strip("$")[2:-2] if p.startswith("\\(") else p.strip("$")))
         else:
             out.append(re.sub(r"\\(textbf|textit|emph|textrm)\{([^{}]*)\}", r"\2", p)
-                       .replace("--", "–").replace("~", " ").replace("\\&", "&"))
-    return re.sub(r"\s+", " ", "".join(out)).strip()
+                       .replace("--", "–").replace("~", " ")
+                       .replace("\\&", "&").replace("\\%", "%").replace("\\#", "#")
+                       .replace("\\_", "_"))
+    text = re.sub(r"\s+", " ", "".join(out)).strip().replace("\0", "$")
+    return unicodedata.normalize("NFC", text)
