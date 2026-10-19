@@ -31,7 +31,14 @@
     "note": "The repository's formalization.yaml lists this paper as a source it formalizes."
    },
    "review_status": "self-assessed",
-   "audits": []
+   "audits": [
+    {
+     "url": "https://cgarryza.github.io/NavierStokesAndEuler/",
+     "author": "Christian Garry",
+     "issues": "cgarryZA/NavierStokesAndEuler",
+     "note": "Audit of the fork cgarryZA/NavierStokesAndEuler, whose Lean is that of f9e8bc5; links 66 of the paper's 79 numbered statements, with coverage notes."
+    }
+   ]
   }
  ]
 }
