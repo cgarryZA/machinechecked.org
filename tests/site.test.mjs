@@ -65,6 +65,7 @@ let failures = 0;
 
 async function check(name, fn) {
   const pg = await browser.newPage({ viewport: { width: 1300, height: 900 } });
+  pg.setDefaultTimeout(10000);
   const errors = [];
   pg.on("pageerror", (e) => errors.push(String(e)));
   try {
@@ -74,6 +75,7 @@ async function check(name, fn) {
   } catch (e) {
     failures++;
     console.log(`FAIL ${name}: ${e.message}`);
+    if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `failure-${failures}.png`), fullPage: true }); }
   } finally {
     await pg.close();
   }
@@ -93,28 +95,78 @@ await check(`a paper with no audit (${plain?.slug})`, async (pg) => {
   assert.ok(plain, "no listed paper without an audit has statements found in its PDF");
   await pg.goto(`${origin}/papers/${plain.slug}/`);
   await pg.waitForSelector("nav.toc li");
-  assert.equal(await pg.locator("nav.toc li").count(), plain.index.claims.length);
+  assert.equal(await pg.locator(".reader-layout > nav.toc li").count(), plain.index.claims.length);
   assert.match(await pg.locator("body").textContent(), /No claim-level audit is published yet/);
   // Without an audit nothing says what Lean establishes.
-  assert.doesNotMatch(await pg.locator("nav.toc").innerHTML(), /st-(proved|accepted)/);
+  assert.doesNotMatch(await pg.locator(".reader-layout > nav.toc").innerHTML(), /st-(proved|accepted)/);
 });
 
 for (const dir of fs.readdirSync(fixtures).filter((d) => fs.existsSync(path.join(fixtures, d, "audit.json")))) {
   await check(`an audit exported by an older version (${dir})`, async (pg) => {
     const index = JSON.parse(fs.readFileSync(path.join(fixtures, dir, "data", "index.json")));
     await pg.goto(`${origin}/read/?audit=${encodeURIComponent(`${origin}/fixtures/${dir}/`)}`);
-    await pg.waitForSelector("nav.toc li");
-    assert.equal(await pg.locator("nav.toc li").count(),
-      index.claims.filter((c) => !String(c.status).startsWith("out of scope")).length);
-    assert.match(await pg.locator(".banner").first().textContent(), /does not endorse it/);
-    await pg.locator("nav.toc li button").first().click();
-    await pg.waitForSelector("aside h1");
+    await pg.waitForSelector("main.state");
+    assert.match(await pg.locator("main.state").textContent(), /rebuild the audit/i);
+    assert.equal(await pg.locator(".reader-layout > nav.toc li").count(), 0);
+
   });
 }
 
 const demo = fs.readFileSync(path.join(site, "demo", "index.html"), "utf8");
 await check("the demo page opens the toy audit in the site's reader", async () => {
   assert.match(demo, /location\.replace\("\.\.\/read\/\?audit="/);
+});
+
+await check("arXiv addresses find the same local listing without external requests", async (pg) => {
+  let calls = 0;
+  await pg.route("https://api.openalex.org/**", (r) => { calls++; return r.fulfill({ json: { results: [] } }); });
+  await pg.goto(`${origin}/papers/`);
+  const row = pg.locator("#listed > li[data-paper^='arxiv:']").first();
+  const id = (await row.getAttribute("data-paper")).slice(6);
+  for (const value of [id, `arxiv:${id}v2`, `https://arxiv.org/abs/${id}v3`, `https://arxiv.org/pdf/${id}v2.pdf`]) {
+    await pg.getByRole("searchbox", { name: "Search papers" }).fill(value);
+    assert.equal(await pg.locator("#listed > li:visible").count(), 1);
+    assert.equal(await pg.locator("#listed > li:visible").getAttribute("data-paper"), `arxiv:${id}`);
+  }
+  assert.equal(calls, 0);
+});
+
+await check("catalogue filters, external errors and delayed results remain distinct", async (pg) => {
+  let finish, started;
+  const requested = new Promise((resolve) => started = resolve);
+  await pg.route("https://api.openalex.org/**", async (r) => {
+    if (r.request().url().includes("delayed")) { started(); await new Promise((resolve) => finish = resolve); try { await r.fulfill({ json: { results: [{ display_name: "Obsolete result", ids: { openalex: "https://openalex.org/W1" } }] } }); } catch {} }
+    else await r.fulfill({ status: 503 });
+  });
+  await pg.goto(`${origin}/papers/`);
+  await pg.getByRole("button", { name: "Published audits", exact: true }).click();
+  assert.ok((await pg.locator("#listed > li:visible").evaluateAll((es) => es.map((e) => e.dataset.level))).every((v) => v === "audits"));
+  await pg.getByRole("button", { name: "All", exact: true }).click();
+  const query = pg.getByRole("searchbox", { name: "Search papers" });
+  await query.fill("missing example");
+  assert.match(await pg.locator("#search-status").textContent(), /No listed papers/);
+  await pg.getByRole("button", { name: "Search other papers" }).click();
+  await pg.getByRole("button", { name: "Retry external search" }).waitFor();
+  await query.fill("delayed"); await pg.getByRole("button", { name: "Search other papers" }).click();
+  await pg.waitForFunction(() => document.querySelector("#found").textContent.includes("Searching"));
+  await requested;
+  await query.fill(""); finish();
+  await pg.waitForLoadState("networkidle");
+  assert.equal(await pg.locator("#found").textContent(), "");
+  assert.ok(await pg.locator("#listed > li:visible").count());
+  await pg.setViewportSize({ width: 320, height: 900 });
+  assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, "catalogue-320.png"), fullPage: true }); }
+});
+
+for (const width of [1360, 390, 320]) await check(`homepage layout and preview at ${width}px`, async (pg) => {
+  await pg.setViewportSize({ width, height: 900 }); await pg.goto(origin + "/");
+  await pg.locator(".preview img").waitFor();
+  await pg.waitForLoadState("networkidle");
+  assert.equal(await pg.locator(".preview img").evaluate((i) => i.complete && i.naturalWidth > 0), true);
+  assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  if (width < 700) assert.match(await pg.locator(".preview img").evaluate((i) => i.currentSrc), /mobile/);
+  if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `homepage-${width}.png`), fullPage: true }); }
 });
 
 await browser.close();

@@ -128,6 +128,8 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
 def level(paper: dict) -> str:
     """The furthest the site's knowledge of the paper goes, in words."""
     fs = paper["formalisations"]
+    if any(f.get("audit_state", {}).get("state") in ("unavailable", "incompatible") for f in fs):
+        return "Audit needs attention"
     if any(f.get("audits") for f in fs):
         return "Audit published"
     if fs:
@@ -138,7 +140,7 @@ def level(paper: dict) -> str:
 def stated(f: dict) -> str:
     s = f["stated_by"]
     if s["source"] == "formalization.yaml":
-        words = "The repository states that it formalises this paper (in its <code>formalization.yaml</code>)."
+        words = "Linked by the repository’s <code>formalization.yaml</code>."
     else:
         words = "Listed by the site's maintainer."
     return words + (f" {e(s['note'])}" if s.get("note") and s["source"] == "curated" else "")
@@ -161,8 +163,10 @@ def formalisation(f: dict, paper: dict) -> str:
              f'<span class="faint small">at <code>{e(commit[:12])}</code></span></h3>',
              f"<p>{stated(f)}</p>"]
     if f.get("review_status"):
-        parts.append(f'<p class="small muted">The project describes its own review as '
-                     f'“{e(f["review_status"])}”.</p>')
+        parts.append(f'<p class="small muted">Project review: '
+                     f'{e(f["review_status"])}</p>')
+    if f.get("audit_state", {}).get("state") in ("unavailable", "incompatible"):
+        parts.append(f'<p class="small muted">Audit {e(f["audit_state"]["state"])}: {e(f["audit_state"].get("detail", ""))}</p>')
     audits = f.get("audits") or []
     if audits:
         parts.append("<ul class=\"audits\">")
@@ -172,11 +176,8 @@ def formalisation(f: dict, paper: dict) -> str:
                          + (f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else "")
                          + "</li>")
         parts.append("</ul>")
-        parts.append('<p class="small muted">An audit records what its author linked, checked and '
-                     "reviewed. MachineChecked shows it and does not endorse it.</p>")
     else:
-        parts.append('<p class="small muted">No audit of this repository has been published yet, so '
-                     "this page says nothing about what Lean establishes for the paper's claims.</p>")
+        parts.append('<p class="small muted">Audit: awaiting publication.</p>')
     parts.append(f'<p class="small"><a href="{e(report_url(paper, f))}">Report this listing</a></p>')
     parts.append("</div>")
     return "\n".join(parts)
@@ -186,7 +187,7 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
     s = slug(paper["id"])
     links = paper["links"]
     ident = (f'arXiv:{e(paper["id"].split(":", 1)[1])}' if paper["id"].startswith("arxiv:")
-             else "Not on arXiv (listed by the site's maintainer)")
+             else "Curated listing")
     src = []
     for key, label in (("arxiv", "arXiv"), ("pdf", "PDF"), ("page", "Paper's page")):
         if links.get(key):
@@ -204,8 +205,7 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
         body.append(f'    <p class="abstract">{e(paper["abstract"])}</p>')
     body.append(f"    <h2>Lean formalisations ({len(fs)})</h2>")
     if len(fs) > 1:
-        body.append('    <p class="small muted">Each is a separate source of evidence; their results are '
-                    "never combined into one verdict.</p>")
+        body.append('    <p class="small muted">Choose a formalisation to inspect its evidence.</p>')
     body += [formalisation(f, paper) for f in fs] or ['    <p class="muted">None listed.</p>']
     if paper.get("related"):
         body.append("    <h2>Related</h2><ul>")
@@ -229,56 +229,70 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
                 f"{ORIGIN}/papers/{s}/", jsonld, reader=reader)
 
 
-# Search on /papers/: the listed papers filter as one types; a query that is an arXiv identifier,
-# or finds too few listed papers, is also looked up in OpenAlex, whose results are shown as not
-# listed (no Lean repository has said it formalises them). Nothing is added to the registry, and
-# every string is set as text.
+# Local papers filter immediately; readers can also request external discovery.
 SEARCH_JS = r"""
 (() => {
-  const q = document.getElementById("q"), found = document.getElementById("found");
-  const rows = [...document.querySelectorAll("#listed li")];
-  let timer = null, seq = 0;
-  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
-  const link = (href, text) => { const a = el("a", null, text); a.href = href; a.rel = "noopener"; return a; };
-  function arxiv(s) { const m = s.match(/(?:arxiv[:\/\s]*|abs\/)?(\d{4}\.\d{4,5})(?:v\d+)?/i); return m ? m[1] : null; }
-  async function external(query, n) {
-    const mine = ++seq;
-    found.replaceChildren();
-    const id = arxiv(query);
-    if (id && !rows.some((r) => r.textContent.includes(id) || r.querySelector("a").getAttribute("href").startsWith(id))) {
-      const p = el("p", "muted small");
-      p.append("arXiv:" + id + " is not listed: no Lean repository on GitHub has said in its formalization.yaml that it formalises it. ");
-      p.append(link("https://arxiv.org/abs/" + id, "Open it on arXiv"));
-      found.append(p);
-    }
-    if (n >= 3 || query.length < 4) return;
-    try {
-      const r = await fetch("https://api.openalex.org/works?per-page=5&select=display_name,publication_year,authorships,doi,ids&search=" + encodeURIComponent(query));
-      if (!r.ok || mine !== seq) return;
-      const d = await r.json();
-      if (!d.results?.length) return;
-      found.append(el("p", "small muted", "Not listed (from OpenAlex): no Lean formalisation of these is known here."));
-      const ul = el("ul", "papers");
-      for (const w of d.results) {
-        const li = el("li");
-        const href = w.doi || (w.ids && w.ids.openalex) || "#";
-        li.append(link(href, w.display_name || "(untitled)"));
-        const who = (w.authorships || []).slice(0, 4).map((a) => a.author && a.author.display_name).filter(Boolean).join(", ");
-        li.append(el("span", "muted", " — " + who + (w.publication_year ? " · " + w.publication_year : "")));
-        li.append(el("span", "pill", "Not listed"));
-        ul.append(li);
-      }
-      found.append(ul);
-    } catch { /* OpenAlex unreachable: the listed papers still filter */ }
+  const query = document.getElementById("q"), found = document.getElementById("found"), status = document.getElementById("search-status");
+  const more = document.getElementById("search-external"), filters = [...document.querySelectorAll("[data-filter]")];
+  const rows = [...document.querySelectorAll("#listed > li[data-paper]")];
+  let filter = "all", generation = 0, request = null;
+  const el = (tag, cls, text) => { const node = document.createElement(tag); if (cls) node.className = cls; if (text != null) node.textContent = text; return node; };
+  function arxiv(value) {
+    const match = value.trim().match(/^(?:(?:https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\/)|arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+(?:\.[a-z]{2})?\/\d{7})(?:v\d+)?(?:\.pdf)?(?:[?#].*)?$/i);
+    return match?.[1].toLowerCase() || null;
   }
-  q.addEventListener("input", () => {
-    const s = q.value.trim().toLowerCase();
-    let n = 0;
-    for (const r of rows) { const hit = !s || r.textContent.toLowerCase().includes(s) || r.querySelector("a").getAttribute("href").includes(s); r.hidden = !hit; n += hit; }
-    clearTimeout(timer);
-    if (!s) { found.replaceChildren(); return; }
-    timer = setTimeout(() => external(q.value.trim(), n), 400);
-  });
+  function link(url, text) {
+    const node = el("a", null, text);
+    try { const u = new URL(url); if (["https:", "http:"].includes(u.protocol)) node.href = u.href; } catch {}
+    node.rel = "noopener noreferrer"; return node;
+  }
+  function update() {
+    generation++; request?.abort(); request = null; found.replaceChildren();
+    more.disabled = false; more.textContent = "Search other papers";
+    const value = query.value.trim().toLowerCase(), id = arxiv(value), words = value.split(/\s+/).filter(Boolean);
+    let count = 0;
+    for (const row of rows) {
+      const matches = id ? row.dataset.paper.toLowerCase() === `arxiv:${id}` : words.every((w) => row.textContent.toLowerCase().includes(w));
+      row.hidden = !matches || (filter !== "all" && row.dataset.level !== filter);
+      if (!row.hidden) count++;
+    }
+    status.textContent = count ? `${count} listed paper${count === 1 ? "" : "s"}` : "No listed papers match this search.";
+    more.hidden = value.length < 4;
+    for (const button of filters) button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+  }
+  async function external() {
+    request?.abort(); request = new AbortController();
+    const mine = ++generation, value = query.value.trim(), id = arxiv(value);
+    const signal = request.signal;
+    found.replaceChildren(el("p", "muted", "Searching OpenAlex…")); more.disabled = true;
+    try {
+      const response = await fetch("https://api.openalex.org/works?per-page=5&select=display_name,publication_year,authorships,doi,ids&search=" + encodeURIComponent(id || value), { signal });
+      if (!response.ok) throw new Error("search unavailable");
+      const data = await response.json();
+      if (mine !== generation) return;
+      found.replaceChildren(el("h2", null, "Other papers · OpenAlex"));
+      if (id && !rows.some((r) => r.dataset.paper.toLowerCase() === `arxiv:${id}`)) found.append(link("https://arxiv.org/abs/" + id, "Open arXiv:" + id));
+      if (!data.results?.length) found.append(el("p", "muted", "No other papers found."));
+      const list = el("ul", "papers");
+      for (const work of data.results || []) {
+        const item = el("li");
+        item.append(link(work.doi || work.ids?.openalex, work.display_name || "Untitled paper"));
+        const authors = (work.authorships || []).slice(0, 4).map((a) => a.author?.display_name).filter(Boolean).join(", ");
+        item.append(el("span", "muted", ` — ${authors}${work.publication_year ? " · " + work.publication_year : ""}`));
+        list.append(item);
+      }
+      found.append(list);
+    } catch (error) {
+      if (mine === generation && error.name !== "AbortError") {
+        found.replaceChildren(el("p", "muted", "OpenAlex search is unavailable. Try again."));
+        more.textContent = "Retry external search";
+      }
+    } finally { if (mine === generation) more.disabled = false; }
+  }
+  query.addEventListener("input", update);
+  more.addEventListener("click", external);
+  for (const button of filters) button.addEventListener("click", () => { filter = button.dataset.filter; update(); });
+  update();
 })();
 """
 
@@ -286,22 +300,28 @@ SEARCH_JS = r"""
 def index_page(papers: list[dict]) -> str:
     rows = []
     for p in sorted(papers, key=lambda p: tex_text(p["title"]).lower()):
-        rows.append(f'<li><a href="{e(slug(p["id"]))}/">{e(tex_text(p["title"]))}</a>'
+        rows.append(f'<li data-paper="{e(p["id"])}" data-level="{"audits" if any(f.get("audits") for f in p["formalisations"]) else "repositories"}"><a href="{e(slug(p["id"]))}/">{e(tex_text(p["title"]))}</a>'
                     f'<span class="muted"> — {e(", ".join(p["authors"]))}</span>'
                     f'<span class="pill">{e(level(p))}</span></li>')
     body = f"""  <main class="paper">
     <h1>Papers</h1>
-    <p class="muted">Papers with Lean formalisations, and the audits published of them. A listing
-      says what a repository states; an audit says what its author recorded. MachineChecked
-      endorses neither.</p>
+    <p class="muted">Browse papers, Lean formalisations and published audits.</p>
     <form class="search" role="search" onsubmit="return false">
       <input id="q" type="search" placeholder="Search by title, author or arXiv identifier"
         aria-label="Search papers" autocomplete="off">
     </form>
-    <div id="found" aria-live="polite"></div>
+    <div class="filters" aria-label="Filter papers">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-filter="audits" aria-pressed="false">Published audits</button>
+      <button type="button" data-filter="repositories" aria-pressed="false">Repository links</button>
+    </div>
+    <p id="search-status" role="status"></p>
     <ul class="papers" id="listed">
 {chr(10).join(rows) or '<li class="muted">None yet.</li>'}
     </ul>
+    <button id="search-external" type="button" hidden>Search other papers</button>
+    <section id="found" aria-live="polite" aria-label="External paper search"></section>
+    <p class="small"><a href="https://github.com/cgarryZA/machinechecked.org#how-papers-get-listed">List your formalisation →</a></p>
   </main>
   <script>{SEARCH_JS}</script>"""
     return page("Papers — MachineChecked",

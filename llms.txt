@@ -1,16 +1,17 @@
 # MachineChecked
 
-> MachineChecked shows a mathematical paper beside its Lean 4 formalisation and says, claim by claim, what Lean establishes: which statements are linked to Lean declarations, whether Lean proves them (or the proof is incomplete, uses further axioms, or the declaration is missing), and which links still need a mathematician's review. It checks the Lean mechanically; it does not check that a Lean statement says what the paper says.
+> MachineChecked displays mathematical papers beside their Lean formalisations. Select a claim to inspect its formal statement, proof results, correspondence reviews, source verification and independent replay.
 
-machinechecked.org hosts the reader and indexes published audits. An audit records what its author linked, checked and reviewed, under their name; the site does not endorse it.
+machinechecked.org indexes papers and loads published audits with their authors and revisions.
+The tool runs locally in a Lean project. The reader supports LaTeX, PDFs and published audit data.
 
 ## Use the tool
 
 - [Getting started](https://github.com/cgarryZA/MachineChecked/blob/main/docs/GETTING_STARTED.md): run `machinechecked view` in a built Lean project with its paper (LaTeX, PDF, an arXiv URL, a leanblueprint or a formalization.yaml)
 - [With a coding agent](https://github.com/cgarryZA/MachineChecked/blob/main/docs/AGENTS.md): `machinechecked check --json` and the Agent Skill
-- [Agent Skill](https://github.com/cgarryZA/MachineChecked/blob/main/skills/machinechecked/SKILL.md): what the statuses mean and what never to claim from them
+- [Agent Skill](https://github.com/cgarryZA/MachineChecked/blob/main/skills/machinechecked/SKILL.md): commands, status codes and evidence
 - [Reviewing](https://github.com/cgarryZA/MachineChecked/blob/main/docs/REVIEWING.md): recording whether a Lean statement matches the paper
-- [Evidence policy](https://github.com/cgarryZA/MachineChecked/blob/main/docs/EVIDENCE_POLICY.md): what each check does and does not establish
+- [Evidence policy](https://github.com/cgarryZA/MachineChecked/blob/main/docs/EVIDENCE_POLICY.md): what each check establishes
 
 ## Try it
 

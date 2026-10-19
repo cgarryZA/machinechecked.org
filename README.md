@@ -1,13 +1,12 @@
 # machinechecked.org
 
 The website of [MachineChecked](https://github.com/cgarryZA/MachineChecked): the landing page,
-the reader, and (to come) the index of papers, the Lean repositories that formalise them, and
-published audits.
+paper index and reader for published Lean audits.
 
-The site is static and builds no Lean. Its reader comes from the MachineChecked package at the
-version [`TOOL_VERSION`](TOOL_VERSION) pins (a release, or a commit); audits are published by their authors where they
-choose and read by the reader as data (`/read/?audit=<address of the audit>`). An audit records
-what its author linked, checked and reviewed; the site does not endorse it.
+The static site uses the MachineChecked package pinned in [`TOOL_VERSION`](TOOL_VERSION).
+Paper pages load their listed projects’ audit records, with proof results, reviews and source
+locations. Each audit carries its author and revision. Readers choose the original paper or an
+explicit audited PDF revision. `/read/?audit=<address>` opens a published audit directly.
 
 ## Layout
 
@@ -29,19 +28,25 @@ python3 scripts/build.py --out _site --claims-cache .cache/claims
 npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
-The `Site` workflow runs the tests (`tests/`), builds the site and tests it in a browser on every
-push, and deploys `main` to GitHub Pages. The browser test opens a paper with two formalisations,
-a paper with no audit, the toy audit as exported by an older version (`tests/fixtures/`), and the
-demo; keep each older export there, so the reader keeps opening what people have published.
+The `Site` workflow tests and builds each pull request, then deploys `main` to GitHub Pages.
+Browser tests cover project switching, audit import errors, catalogue queries and filters,
+external search failures and cancellation, and responsive homepage previews.
+Synthetic fixtures exercise the current data contract; older data requests an audit rebuild.
 
 ## How papers get listed
 
 Every day the `Discover` workflow (`scripts/discover.py`) searches GitHub for repositories whose
 `formalization.yaml` names an arXiv paper among the sources they formalize, checks that the
 arXiv identifier exists and that the repository is a Lean project, and rewrites
-`registry/discovered/`. Nobody approves these listings; each says it is the repository's own
-statement, and each has a "Report this listing" link. To remove one, add
+`registry/discovered/`. Each listing cites its repository’s
+`formalization.yaml` and includes a **Report this listing** link. To remove one, add
 `{"paper": "arxiv:…", "repository": "owner/repo", "reason": "…"}` to `registry/delisted.json`.
+
+To list your formalisation, publish a `formalization.yaml` with a source whose `relationship` is
+`formalizes` and whose `arxiv` is `arxiv:<paper identifier>`. Keep the repository public and include
+its Lean toolchain. The daily discovery run checks the source and records the repository revision.
+For a claim-level audit, publish the output of `uvx machinechecked export` and add its `audit.json`
+address and author to the registry. Repository links and published audits are separate catalogue filters.
 
 ## Adding a paper by hand
 

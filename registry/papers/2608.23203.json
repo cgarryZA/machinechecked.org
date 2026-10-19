@@ -20,13 +20,13 @@
     "source": "formalization.yaml",
     "file": "formalization.yaml"
    },
-   "review_status": "Per-claim status in ACCEPTANCE.md and the MachineChecked audit; the statements are reviewed by their author.",
+   "review_status": "Author reviews; per-claim results in the audit.",
    "audits": [
     {
      "url": "https://cgarryza.github.io/mvfbsdej-well-posedness-lean/",
      "author": "Christian Garry",
      "issues": "cgarryZA/mvfbsdej-well-posedness-lean",
-     "note": "Published by the repository's own workflow after every push; its statements are reviewed by their author, which is not an independent review."
+     "note": "Published by the project’s audit workflow."
     }
    ]
   }

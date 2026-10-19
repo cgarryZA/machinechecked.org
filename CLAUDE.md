@@ -10,13 +10,8 @@ for both; read its "The site" section before changing what the site lists or sho
 - **The site runs nothing.** No Lean, no TeX, no code from an audit or a listed repository; its
   workflows only build static files, check metadata and deploy. Audits are read as data, from
   their authors' hosts, by the reader at `/read/`.
-- **The site never endorses.** A listing says what a repository states; an audit says what its
-  author recorded. Words on pages never round a status up (MachineChecked's
-  `docs/EVIDENCE_POLICY.md`); no percentages of verification.
-- **The reader is not edited here.** It is the built reader of the MachineChecked package at
-  `TOOL_VERSION`; change it in the MachineChecked repository. A new release reaches the site by
-  the pull request `Propose reader update` opens, after the browser test (`tests/site.test.mjs`)
-  passes on it; never deploy a reader version untested.
+- **Attribute evidence.** Listings name their source; audits name their author and pinned revision.
+  Display the engine’s status codes and independent evidence dimensions faithfully.
 
 ## Tracking work
 
@@ -33,3 +28,7 @@ project, written generically.
 ## Style
 
 Plain English for mathematicians; comments say what the code does or why, not its history.
+
+Public prose is concise and affirmative: say what exists, what a check establishes, or what the
+reader can do next. Keep attribution compact and provenance in Details. Preserve quoted research
+titles and mathematical statements. Follow MachineChecked #85 for public copy.

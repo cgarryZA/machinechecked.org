@@ -9,7 +9,7 @@
 // Set CHROMIUM to a browser binary if Playwright has none, and CLAIM to the claim to open.
 // Convert the screenshots to WebP with Pillow:
 //   python3 -c "from PIL import Image as I; [I.open(f'preview-{s}.png').convert('RGB')
-//     .save(f'site/preview-{s}.webp', quality=82, method=6) for s in ('light', 'dark')]"
+//     .save(f'site/preview-{s}.webp', quality=82, method=6) for s in ('light', 'dark', 'mobile-light', 'mobile-dark')]"
 import { chromium } from "playwright";
 import http from "node:http";
 import fs from "node:fs";
@@ -36,20 +36,22 @@ const server = http.createServer((req, res) => {
 }).listen(0);
 const port = server.address().port;
 const index = JSON.parse(fs.readFileSync(path.join(audit, "data", "index.json")));
-const claim = process.env.CLAIM || "T:prop:pred";
+const claim = process.env.CLAIM || "T:thm:even-add";
 const paper = index.papers[0].id;
 const url = `http://127.0.0.1:${port}/#/r/${encodeURIComponent(index.release)}/read/` +
-  `${encodeURIComponent(paper)}/${encodeURIComponent(claim)}`;
+  `${encodeURIComponent(paper)}/${encodeURIComponent(claim)}?compare=1`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 fs.mkdirSync(out, { recursive: true });
-for (const scheme of ["light", "dark"]) {
-  const page = await browser.newPage({ viewport: { width: 1360, height: 820 },
+for (const width of [1360, 390]) for (const scheme of ["light", "dark"]) {
+  const page = await browser.newPage({ viewport: { width, height: width < 500 ? 900 : 620 },
     deviceScaleFactor: 2, colorScheme: scheme });
   await page.goto(url);
+  await page.locator(".exact pre").waitFor();
   await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(2500);
-  await page.screenshot({ path: path.join(out, `preview-${scheme}.png`) });
+  await page.evaluate(() => document.fonts.ready);
+  const target = width < 500 ? page.locator(".comparison-grid") : page;
+  await target.screenshot({ path: path.join(out, `preview-${width < 500 ? "mobile-" : ""}${scheme}.png`) });
   await page.close();
 }
 await browser.close();

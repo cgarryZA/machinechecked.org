@@ -57,6 +57,20 @@ def resolve(ps: list[dict], log=print) -> dict:
     return used
 
 
+def audit_key(url: str) -> str:
+    return "audit:" + url.rstrip("/") + "/"
+
+
+def published_audit_version(url: str) -> str | None:
+    from prooflens.published import audit_version
+    from claims import fetch
+    try:
+        d = json.loads(fetch(url.rstrip("/") + "/audit.json", 1_000_000))
+        return audit_version(d) if d.get("schema") == "machinechecked/audit@1" else None
+    except (OSError, ValueError):
+        return None
+
+
 def moved(ps: list[dict], published: dict) -> list[str]:
     """The followed branches whose head is not the commit the published site used."""
     out = []
@@ -64,6 +78,13 @@ def moved(ps: list[dict], published: dict) -> list[str]:
         sha = head(f["repository"], f["follow"])
         if sha is not None and published.get(key(f)) != sha:
             out.append(f"{key(f)}: {str(published.get(key(f)))[:12]} -> {sha[:12]}")
+    for p in ps:
+        for f in p["formalisations"]:
+            for a in f.get("audits", [])[:1]:
+                current = published_audit_version(a["url"])
+                k = audit_key(a["url"])
+                if current and published.get(k) != current:
+                    out.append(f"{k}: publication changed")
     return out
 
 

@@ -21,12 +21,23 @@ h3 { font-size: 17px; margin: 0 0 6px; overflow-wrap: anywhere; }
 .card p { margin: 6px 0; }
 .small { font-size: 14px; } .muted { color: var(--muted); } .faint { color: var(--faint); }
 .btn { display: inline-block; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--accent); text-decoration: none; font-weight: 500; font-size: 15px; }
-.btn.primary { background: var(--accent); color: var(--surface); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
 ul.audits { list-style: none; padding: 0; margin: 10px 0; }
 ul.audits li { margin: 6px 0; }
 ul.papers { list-style: none; padding: 0; }
 ul.papers li { padding: 10px 0; border-bottom: 1px solid var(--border); }
-.pill { display: inline-block; margin-left: 8px; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pill { display: inline-block; margin-left: 8px; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); white-space: normal; }
 footer { padding: 28px 0 48px; font-size: 14px; color: var(--faint); display: flex; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: 24px; }
 footer a { color: var(--faint); }
 form.search input { width: 100%; font: inherit; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin: 8px 0 12px; }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+button { font: inherit; font-size: 15px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters [aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+#search-status { font-size: 14px; color: var(--muted); }
+ul.papers li { padding: 16px 0; }
+ul.papers li > a { font-family: var(--serif); font-size: 20px; }
+ul.papers li > .muted { display: block; margin-top: 4px; }
+ul.papers li > .pill { margin: 6px 0 0; }
+[hidden] { display: none !important; }
