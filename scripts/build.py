@@ -40,6 +40,40 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
+def audit_versions(audits: dict) -> dict:
+    """The publication each registered audit was at when this build read it (by
+    `follow.audit_key`). A loaded audit gives its own version; one that failed to load is asked for its descriptor's,
+    so that the check workflow rebuilds when it is republished, not on every check while it
+    stays broken."""
+    import follow as fl
+    out = {}
+    for a in audits.values():
+        version = a.get("version") or fl.published_audit_version(a["url"])
+        if version:
+            out[fl.audit_key(a["url"])] = version
+    return out
+
+
+def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
+    """One paper page's data under `out/papers/<slug>/data/`, in the reader's format: the
+    statements found in its PDF (`claims.claims_for`) joined with its loaded audits
+    (`claims.audits_for`) by MachineChecked. Returns the page's index."""
+    import claims
+    import papers
+    from prooflens.paper import write_paper_site, apply_audits
+    records = apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
+                           found.get("pdf_sha256") if found else None)
+    for f in p["formalisations"]:
+        if f["repository"] in audits:
+            a = audits[f["repository"]]
+            f["audit_state"] = {k: a[k] for k in ("state", "detail", "release", "commit") if k in a}
+    # The reader's panel offers each listing's report link as the static page builds it.
+    entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
+                                     for f in p["formalisations"]]}
+    return write_paper_site(out / "papers" / papers.slug(p["id"]), entry, records,
+                            found and found["page_size"], claims.view_pdf(p), audits=audits)
+
+
 def build(out: Path, reader: Path, claims_cache: Path | None = None,
           check_audits: bool = False, follow: bool = False) -> None:
     if out.exists():
@@ -48,7 +82,6 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
     shutil.copytree(reader, out / "read")
     import claims
     import papers
-    from prooflens.paper import write_paper_site, apply_audits, load_published_audit
     ps = papers.load(ROOT / "registry")
     # Listings that follow a branch are shown at its current commit; what was used is
     # published, so the check workflow can tell when to rebuild.
@@ -62,20 +95,8 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
     for p in ps:
         found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
         audits = claims.audits_for(p) if check_audits or claims_cache is not None else {}
-        for r, a in audits.items():
-            if a.get("version"):
-                used[fl.audit_key(a["url"])] = a["version"]
-        records = apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
-                               found.get("pdf_sha256") if found else None)
-        for f in p["formalisations"]:
-            if f["repository"] in audits:
-                a = audits[f["repository"]]
-                f["audit_state"] = {k: a[k] for k in ("state", "detail", "release", "commit") if k in a}
-        # The reader's panel offers each listing's report link as the static page builds it.
-        entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
-                                         for f in p["formalisations"]]}
-        write_paper_site(out / "papers" / papers.slug(p["id"]), entry,
-                         records, found and found["page_size"], claims.view_pdf(p), audits=audits)
+        used.update(audit_versions(audits))
+        write_paper(out, p, found, audits)
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(
