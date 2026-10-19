@@ -16,7 +16,8 @@ explicit audited PDF revision. `/read/?audit=<address>` opens a published audit 
 | `registry/papers/*.json` | one file per paper: where it is, the Lean repositories that formalise it and who says so, and published audits (`registry/schema.json`) |
 | `scripts/papers.py` | builds `/papers/` and a plain HTML page per paper from the registry |
 | `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
-| `scripts/build.py` | assembles the site into `_site/`: `site/`, the reader at `/read/`, `sitemap.xml`, `robots.txt`, `llms.txt` |
+| `scripts/prepare.py` | the build's network step: reads followed branches' heads, the papers' statements and the registered audits into a snapshot |
+| `scripts/build.py` | renders a snapshot into `_site/`, without the network: `site/`, the reader at `/read/`, the paper pages' data, `sitemap.xml`, `robots.txt`, `llms.txt`, `follow.json`, `build.json` |
 | `TOOL_VERSION` | the MachineChecked release (or commit) whose reader the site serves |
 | `.github/actions/machinechecked` | installs and checks the pinned package, for every workflow |
 | `llms.txt` | a short description for language models |
@@ -26,7 +27,8 @@ explicit audited PDF revision. `/read/?audit=<address>` opens a published audit 
 ```sh
 pip install "machinechecked==$(cat TOOL_VERSION)"   # or, for a commit: "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@<commit>"
 python3 scripts/build.py --check-package             # the installed package is the pinned one
-python3 scripts/build.py --out _site --claims-cache .cache/claims --check-audits
+python3 scripts/prepare.py --out .cache/snapshot --claims-cache .cache/claims [--follow]   # or --offline
+python3 scripts/build.py --snapshot .cache/snapshot --out _site
 npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
@@ -58,6 +60,39 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 `stated_by.source: "formalization.yaml"`); a paper not on arXiv is added by the maintainer
 (`listing: "curated"`). An audit is added by its address (where its `audit.json` is) and its
 author's name; the page opens it in the reader.
+
+## How the site is built
+
+```
+GitHub code search ── discover.py (daily) ──▶ registry/discovered/*.json ─┐
+maintainers ────────────────────────────────▶ registry/papers/*.json ─────┤ papers.load: the
+                                                                          │ one validation
+                                                                          ▼
+prepare.py (network) ── followed branch heads (follow.resolve)
+                     ── each paper's PDF → its statements (claims.claims_for, cached by
+                        PDF address, listing commits and package version)
+                     ── each listing's formalization.yaml at its commit (claims.alignment)
+                     ── each registered audit (claims.audits_for → prooflens load_published_audit)
+                     ──▶ snapshot: registry as shown, statements, audits, follow.json data
+build.py (no network) ── per paper: prooflens apply_audits + write_paper_site → data/
+                      ── papers.write → plain HTML pages, list, badges
+                      ──▶ _site/ (+ /follow.json, /build.json) ── browser test ── Pages
+follow.py check (every 15 min) ── compares /follow.json with heads and audit publications now
+```
+
+| Step | Owns | Network |
+|---|---|---|
+| `discover.py` | which repositories state they formalise an arXiv paper | GitHub, arXiv |
+| `papers.load` / `papers.validate` | the registry: schema validation, merging, delisting | none |
+| `prepare.py` | everything read from the network for a build, and how each read failed | papers' PDFs, GitHub, audit hosts |
+| MachineChecked (`prooflens.published`, `prooflens.paper`) | what a published audit means: its validation, statuses, places and editions | none (given the site's `fetch`) |
+| `build.py` | the static site, from a snapshot | none |
+| `follow.py check` | whether a rebuild is due | GitHub, audit hosts, the live site |
+
+All reads go through `claims.fetch` (discovery has its own client for GitHub's search API). A read
+that fails is recorded as that failure: a PDF that was not read has no statements, and an audit
+that did not load shows "Audit unavailable" or "Audit update required", never "no audit
+published". `prepare.py --offline` writes a snapshot that reads nothing.
 
 ## Release
 

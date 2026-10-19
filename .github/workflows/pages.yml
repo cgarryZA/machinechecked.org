@@ -36,9 +36,12 @@ jobs:
           key: claims-${{ hashFiles('TOOL_VERSION', 'registry/**/*.json') }}
           restore-keys: claims-
       - run: pip install pytest && python -m pytest -q tests
-      - run: python scripts/build.py --out _site --claims-cache .cache/claims --check-audits --follow
+      - name: Read the papers, followed branches and audits (the only network step)
+        run: python scripts/prepare.py --out .cache/snapshot --claims-cache .cache/claims --follow
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Render the site from that snapshot
+        run: python scripts/build.py --snapshot .cache/snapshot --out _site
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

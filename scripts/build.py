@@ -1,11 +1,13 @@
-"""Assemble machinechecked.org into a directory to publish.
+"""Assemble machinechecked.org into a directory to publish, from a snapshot.
 
 The site is static: the landing page and its files (`site/`), the MachineChecked reader at
 `/read/` (copied from the installed `machinechecked` package, at the version `TOOL_VERSION`
-pins), a sitemap, `robots.txt` and `llms.txt`. Nothing here builds Lean or runs code from an
-audit; audits are read by the reader, as data, from where their authors publish them.
+pins), a page per paper with its data in the reader's format, a sitemap, `robots.txt` and
+`llms.txt`. Everything read from the network is in the snapshot `prepare.py` writes; rendering
+reads nothing else, so the same snapshot gives the same site. Nothing here builds Lean or runs
+code from an audit.
 
-Usage: python3 scripts/build.py --out _site [--reader DIR]
+Usage: python3 scripts/build.py --snapshot .cache/snapshot --out _site [--reader DIR]
        python3 scripts/build.py --check-package   (the installed package is the one pinned)
 """
 
@@ -83,20 +85,6 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
-def audit_versions(audits: dict) -> dict:
-    """The publication each registered audit was at when this build read it (by
-    `follow.audit_key`). A loaded audit gives its own version; one that failed to load is asked for its descriptor's,
-    so that the check workflow rebuilds when it is republished, not on every check while it
-    stays broken."""
-    import follow as fl
-    out = {}
-    for a in audits.values():
-        version = a.get("version") or fl.published_audit_version(a["url"])
-        if version:
-            out[fl.audit_key(a["url"])] = version
-    return out
-
-
 def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
     """One paper page's data under `out/papers/<slug>/data/`, in the reader's format: the
     statements found in its PDF (`claims.claims_for`) joined with its loaded audits
@@ -104,6 +92,7 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
     import claims
     import papers
     from prooflens.paper import write_paper_site, apply_audits
+    found = found if found and "claims" in found else None
     records = apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
                            found.get("pdf_sha256") if found else None)
     for f in p["formalisations"]:
@@ -117,30 +106,22 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
                             found and found["page_size"], claims.view_pdf(p), audits=audits)
 
 
-def build(out: Path, reader: Path, claims_cache: Path | None = None,
-          check_audits: bool = False, follow: bool = False) -> None:
+def build(out: Path, reader: Path, snapshot: Path) -> None:
+    """Render the site from `snapshot` (see `prepare.py`) into `out`, replacing it."""
+    import json
+    import papers
+    import prepare
     package = require_package()
+    snap = prepare.read(snapshot)
+    ps = snap["registry"]
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "site", out)
     shutil.copytree(reader, out / "read")
-    import claims
-    import papers
-    ps = papers.load(ROOT / "registry")
-    # Listings that follow a branch are shown at its current commit; what was used is
-    # published, so the check workflow can tell when to rebuild.
-    import json
-    import follow as fl
-    used = fl.resolve(ps) if follow else {}
-    if claims_cache is not None:
-        claims_cache.mkdir(parents=True, exist_ok=True)
     # Each paper page's data, in the reader's standard format, beside the page (written first:
     # it replaces the page's directory).
     for p in ps:
-        found = claims.claims_for(p, claims_cache) if claims_cache is not None else None
-        audits = claims.audits_for(p) if check_audits or claims_cache is not None else {}
-        used.update(audit_versions(audits))
-        write_paper(out, p, found, audits)
+        write_paper(out, p, snap["found"].get(p["id"]), snap["audits"].get(p["id"], {}))
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(
@@ -149,7 +130,7 @@ def build(out: Path, reader: Path, claims_cache: Path | None = None,
         + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls) + "</urlset>\n")
     (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {ORIGIN}/sitemap.xml\n")
     shutil.copyfile(ROOT / "llms.txt", out / "llms.txt")
-    (out / "follow.json").write_text(json.dumps(used, indent=1) + "\n")
+    (out / "follow.json").write_text(json.dumps(snap["follow"], indent=1) + "\n")
     (out / "build.json").write_text(json.dumps(provenance(out, ps, package), indent=1) + "\n")
     for need in ("index.html", "read/index.html", "read/theme.css", "demo/index.html", "llms.txt"):
         if not (out / need).is_file():
@@ -177,12 +158,7 @@ def main() -> None:
     a = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     a.add_argument("--out", default="_site")
     a.add_argument("--reader", help="a built reader directory (default: the installed package's)")
-    a.add_argument("--claims-cache", help="find each paper's statements in its PDF (needs "
-                   "poppler), caching the results here")
-    a.add_argument("--check-audits", action="store_true",
-                   help="load and validate the registered audits")
-    a.add_argument("--follow", action="store_true",
-                   help="show listings that follow a branch at its current commit (asks GitHub)")
+    a.add_argument("--snapshot", help="the snapshot to render (written by scripts/prepare.py)")
     a.add_argument("--check-package", action="store_true",
                    help="only check that the installed MachineChecked is the pinned one and has "
                    "what the site uses")
@@ -190,9 +166,10 @@ def main() -> None:
     if args.check_package:
         print(f"machinechecked {require_package(exact=True)} (TOOL_VERSION {pinned()})")
         return
+    if not args.snapshot:
+        a.error("--snapshot is required: run scripts/prepare.py first")
     build(Path(args.out).resolve(), Path(args.reader).resolve() if args.reader else reader_dir(),
-          Path(args.claims_cache).resolve() if args.claims_cache else None, args.check_audits,
-          args.follow)
+          Path(args.snapshot).resolve())
 
 
 if __name__ == "__main__":

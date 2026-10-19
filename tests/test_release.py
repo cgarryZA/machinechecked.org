@@ -1,7 +1,6 @@
 """The site's release wiring: the package it is built with, what a build records, and the check
 that starts a rebuild."""
 
-import io
 import json
 import sys
 from importlib.metadata import version
@@ -44,8 +43,11 @@ def test_a_build_records_what_it_was_made_from(tmp_path, monkeypatch):
     (reader / "index.html").write_text('<script type="module" src="./assets/index-x.js"></script>')
     (reader / "theme.css").write_text(":root { --bg: #fff; }")
     monkeypatch.setenv("GITHUB_SHA", "f" * 40)
+    import prepare
+    snapshot = tmp_path / "snapshot"
+    prepare.prepare(ROOT / "registry", snapshot, None, offline=True, log=lambda m: None)
     out = tmp_path / "out"
-    build.build(out, reader)
+    build.build(out, reader, snapshot)
     record = json.loads((out / "build.json").read_text())
     assert record["tool_version"] == build.pinned()
     assert record["machinechecked"] == version("machinechecked")
@@ -54,7 +56,7 @@ def test_a_build_records_what_it_was_made_from(tmp_path, monkeypatch):
     assert set(record["papers"]) == {p["id"] for p in papers.load(ROOT / "registry")}
     # The digest is the reader's files: another reader is another digest.
     (reader / "theme.css").write_text(":root { --bg: #000; }")
-    build.build(out, reader)
+    build.build(out, reader, snapshot)
     assert json.loads((out / "build.json").read_text())["reader_sha256"] != record["reader_sha256"]
 
 
@@ -65,11 +67,14 @@ def test_a_build_records_what_it_was_made_from(tmp_path, monkeypatch):
     (b"{}", ["o/r@main: x -> y"], 1),
 ])
 def test_the_follow_check_never_reads_a_failure_as_a_change(monkeypatch, published, moved, code):
-    def urlopen(url, timeout=None):
+    import claims
+
+    def fetch(url, limit=None, headers=None):
+        assert url == "https://site.example/follow.json"
         if isinstance(published, Exception):
             raise published
-        return io.BytesIO(published)
-    monkeypatch.setattr(follow.urllib.request, "urlopen", urlopen)
+        return published
+    monkeypatch.setattr(claims, "fetch", fetch)
     monkeypatch.setattr(follow, "moved", lambda ps, pub: moved)
     monkeypatch.setattr(sys, "argv", ["follow.py", "check", "https://site.example"])
     with pytest.raises(SystemExit) as e:

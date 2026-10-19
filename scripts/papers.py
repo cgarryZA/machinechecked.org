@@ -19,14 +19,23 @@ from urllib.parse import quote
 ORIGIN = "https://machinechecked.org"
 
 
-def _read(path: Path, schema: dict) -> dict:
+SCHEMA = Path(__file__).resolve().parent.parent / "registry" / "schema.json"
+
+
+def validate(d: dict, where: str, schema: dict | None = None) -> dict:
+    """`d`, if it is a valid registry entry; else stop, saying where and why. The one place the
+    registry's entries are checked, whether read from `registry/` or from a build's snapshot."""
     import jsonschema
-    d = json.loads(path.read_text(encoding="utf-8"))
+    schema = schema or json.loads(SCHEMA.read_text(encoding="utf-8"))
     try:
         jsonschema.validate(d, schema)
     except jsonschema.ValidationError as e:
-        raise SystemExit(f"{path.name}: {e.message} (at {'/'.join(map(str, e.path))})")
+        raise SystemExit(f"{where}: {e.message} (at {'/'.join(map(str, e.path))})")
     return d
+
+
+def _read(path: Path, schema: dict) -> dict:
+    return validate(json.loads(path.read_text(encoding="utf-8")), path.name, schema)
 
 
 def load(registry: Path) -> list[dict]:

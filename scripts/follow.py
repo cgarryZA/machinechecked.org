@@ -14,23 +14,19 @@ import json
 import os
 import re
 import sys
-import urllib.request
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def head(repo: str, branch: str) -> str | None:
     """The commit `branch` of `repo` is at, or None if GitHub does not say."""
-    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/commits/{branch}",
-                                 headers={"Accept": "application/vnd.github.sha",
-                                          "User-Agent": "machinechecked.org"})
+    from claims import fetch
     token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            sha = r.read(100).decode().strip()
-    except OSError:
+        sha = fetch(f"https://api.github.com/repos/{repo}/commits/{branch}", 100,
+                    {"Accept": "application/vnd.github.sha",
+                     **({"Authorization": f"Bearer {token}"} if token else {})}).decode().strip()
+    except (OSError, ValueError, UnicodeDecodeError):
         return None
     return sha if SHA.match(sha) else None
 
@@ -96,9 +92,9 @@ def main() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import papers
     ps = papers.load(Path(__file__).resolve().parent.parent / "registry")
+    from claims import fetch
     try:
-        with urllib.request.urlopen(sys.argv[2].rstrip("/") + "/follow.json", timeout=30) as r:
-            published = json.loads(r.read(1_000_000))
+        published = json.loads(fetch(sys.argv[2].rstrip("/") + "/follow.json", 1_000_000))
     except (OSError, ValueError) as e:
         print(f"the published site's follow.json could not be read: {e}", file=sys.stderr)
         sys.exit(2)

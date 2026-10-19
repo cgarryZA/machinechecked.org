@@ -31,8 +31,11 @@ def pdf_address(paper: dict) -> str | None:
     return links.get("pdf")
 
 
-def fetch(url: str, limit: int = 100_000_000) -> bytes:
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
+def fetch(url: str, limit: int = 100_000_000, headers: dict | None = None) -> bytes:
+    """The bytes at `url`, at most `limit` of them; the site's one way of reading the network
+    (besides discovery). Raises OSError when it cannot, ValueError when the answer is too large."""
+    req = urllib.request.Request(url, headers={**UA, **(headers or {})})
+    with urllib.request.urlopen(req, timeout=120) as r:
         data = r.read(limit + 1)
     if len(data) > limit:
         raise ValueError(f"{url}: larger than {limit} bytes")
@@ -46,7 +49,7 @@ def alignment(repo: str, commit: str) -> dict | None:
         text = fetch(f"https://raw.githubusercontent.com/{repo}/{commit}/formalization.yaml",
                      2_000_000).decode("utf-8", "replace")
         fy = yaml.safe_load(text)
-    except Exception:
+    except (OSError, ValueError, yaml.YAMLError):
         return None
     return fy if isinstance(fy, dict) else None
 
@@ -63,7 +66,9 @@ def view_pdf(paper: dict) -> str | None:
 
 def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
     """The paper's statements, with each repository's declared links (`prooflens.paper.
-    paper_claims`), and its page size; None when its PDF cannot be read."""
+    paper_claims`), its page size and its PDF's digest; None when it has no PDF address, and
+    `{"state": "unreadable", "detail": …}` when its PDF could not be read."""
+    import subprocess
     from prooflens.paper import paper_claims
     from prooflens.pdfclaims import claims_from_pdf
 
@@ -87,9 +92,9 @@ def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
                 raise ValueError("not a PDF")
             pdf.write_bytes(data)
             anchors, size = claims_from_pdf(pdf)
-    except Exception as e:
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
         log(f"{paper['id']}: PDF not read ({e})")
-        return None
+        return {"state": "unreadable", "detail": str(e)}
     claims = paper_claims(anchors, paper["title"],
                           [(f, alignment(f["repository"], f["commit"])) for f in fs])
     out = {"claims": claims, "page_size": list(size) if size else None,
