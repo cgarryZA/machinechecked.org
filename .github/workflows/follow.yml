@@ -1,10 +1,11 @@
 name: Follow listed branches
 
 # Every 15 minutes: when a listing that follows a branch (`"follow"` in its registry entry) has
-# moved since the published site was built, start the Site workflow, which rebuilds and deploys
-# the site with the branch's new commit. It reads commit ids only; it runs nothing from a listed
-# repository. (A run started by this workflow's token is a workflow_dispatch, which the token is
-# allowed to start.)
+# moved, or a registered audit has been republished, since the published site was built
+# (scripts/follow.py, against the site's /follow.json), start the Site workflow, which rebuilds
+# and deploys the site. It reads commit ids and audit descriptors only; it runs nothing from a
+# listed repository. A check that cannot run fails here and starts no rebuild. (A run started by
+# this workflow's token is a workflow_dispatch, which the token is allowed to start.)
 on:
   schedule:
     - cron: "*/15 * * * *"
@@ -23,19 +24,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Has a followed branch moved?
+      - uses: ./.github/actions/machinechecked
+      - name: Has a followed branch moved, or an audit been republished?
         id: moved
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if python scripts/follow.py check https://machinechecked.org; then
-            echo "moved=no" >> "$GITHUB_OUTPUT"
-          else
-            echo "moved=yes" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          python scripts/follow.py check https://machinechecked.org
+          case $? in
+            0) echo "moved=no" >> "$GITHUB_OUTPUT" ;;
+            1) echo "moved=yes" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::the check could not run"; exit 1 ;;
+          esac
       - name: Rebuild the site
         if: steps.moved.outputs.moved == 'yes'
         env:

@@ -18,13 +18,15 @@ explicit audited PDF revision. `/read/?audit=<address>` opens a published audit 
 | `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
 | `scripts/build.py` | assembles the site into `_site/`: `site/`, the reader at `/read/`, `sitemap.xml`, `robots.txt`, `llms.txt` |
 | `TOOL_VERSION` | the MachineChecked release (or commit) whose reader the site serves |
+| `.github/actions/machinechecked` | installs and checks the pinned package, for every workflow |
 | `llms.txt` | a short description for language models |
 
 ## Build
 
 ```sh
 pip install "machinechecked==$(cat TOOL_VERSION)"   # or, for a commit: "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@<commit>"
-python3 scripts/build.py --out _site --claims-cache .cache/claims
+python3 scripts/build.py --check-package             # the installed package is the pinned one
+python3 scripts/build.py --out _site --claims-cache .cache/claims --check-audits
 npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 ```
 
@@ -56,9 +58,30 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 (`listing: "curated"`). An audit is added by its address (where its `audit.json` is) and its
 author's name; the page opens it in the reader.
 
-The reader is updated by pull request: the daily `Propose reader update` workflow notices a newer
-MachineChecked release on PyPI, opens a pull request pinning it, and runs the Site workflow on it
-(build and browser test, no deploy). Merging it deploys. To test an unreleased commit, pin the
-commit by hand. The landing page's
-screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from the built site's
-reader and an exported audit; how to run it is at the top of the script.
+## Release
+
+The reader has one source: the MachineChecked package. The site serves its built reader unchanged
+at `/read/`, at the release `TOOL_VERSION` pins, and has no reader code of its own.
+
+```
+MachineChecked release on PyPI (web/ built and committed in the package)
+  │  Propose reader update (daily): newer and installable → a branch changing only TOOL_VERSION
+  ▼
+pull request ── Site workflow: install the pin, check it (build.py --check-package),
+  │               pytest, build, browser test; no deploy
+  ▼ merge
+main ── Site workflow: the same, then deploy to GitHub Pages
+          /read/       the package's reader, copied unchanged
+          /build.json  site commit, TOOL_VERSION, installed version, reader digest,
+                       each listing's commit and the audit release shown
+          /follow.json followed branches' commits and audits' publications, for the follow check
+```
+
+Every workflow installs the package the same way (`.github/actions/machinechecked`). The build
+stops, naming what is missing, if the installed package lacks what the site uses. The reader
+update proposes a release only once pip can install it. The `Follow listed branches` check rebuilds
+when a followed branch moves or an audit is republished. If the check cannot run, the workflow
+fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
+
+The landing page's screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from
+the built site's reader and an exported audit; how to run it is at the top of the script.

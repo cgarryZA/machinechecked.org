@@ -5,7 +5,7 @@ that the site shows the repository as it is without a registry change on every p
 
 The build resolves the heads (`resolve`) and publishes what it used as `/follow.json`; the check
 workflow (`.github/workflows/follow.yml`) compares that with the heads now (`moved`) and rebuilds
-the site when one moved. Nothing here runs code from a listed repository: it reads commit ids.
+the site when one moved. A check that cannot run fails the workflow; it never starts a rebuild. Nothing here runs code from a listed repository: it reads commit ids.
 """
 
 from __future__ import annotations
@@ -89,8 +89,9 @@ def moved(ps: list[dict], published: dict) -> list[str]:
 
 
 def main() -> None:
-    """`python3 scripts/follow.py check URL`: print the branches that moved since the site at URL
-    was built, and exit 1 if any did (the workflow then rebuilds)."""
+    """`python3 scripts/follow.py check URL`: print what moved since the site at URL was built.
+    Exits 0 when nothing moved, 1 when something did (the workflow then rebuilds), and 2 when the
+    published site's record cannot be read: a failure to ask is not a change."""
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import papers
@@ -98,8 +99,9 @@ def main() -> None:
     try:
         with urllib.request.urlopen(sys.argv[2].rstrip("/") + "/follow.json", timeout=30) as r:
             published = json.loads(r.read(1_000_000))
-    except (OSError, ValueError):
-        published = {}
+    except (OSError, ValueError) as e:
+        print(f"the published site's follow.json could not be read: {e}", file=sys.stderr)
+        sys.exit(2)
     changes = moved(ps, published)
     for c in changes:
         print(c)
