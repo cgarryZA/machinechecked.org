@@ -189,3 +189,31 @@ def test_audit_rebuild_at_same_commit_triggers_refresh(monkeypatch):
     assert follow.moved(ps, {k:"new-release"}) == []
     monkeypatch.setattr(follow, "published_audit_version", lambda url: None)
     assert follow.moved(ps, {k:"new-release"}) == []
+
+
+# The pinned copy of GoatCounter's script (count.v5.js from gc.zgo.at); updating it is a
+# deliberate change of this digest.
+COUNT_JS_SHA256 = "9e4391f5c18cb24de433b6ef31d8b1f1c85ee41c6f0ad274b28664168063725a"
+
+
+def test_visits_are_counted_by_the_sites_own_pinned_script(tmp_path):
+    """#23: every page counts its visit with the copy of GoatCounter's script the site serves
+    (no code from another host), says so in its footer, and the papers list asks GoatCounter's
+    public counter for each paper's count."""
+    import hashlib
+    js = ROOT / "site" / "assets" / "goatcounter-count.v5.js"
+    assert hashlib.sha256(js.read_bytes()).hexdigest() == COUNT_JS_SHA256
+    out = tmp_path / "out"
+    papers.write(out, papers.load(_registry(tmp_path / "reg", PAPER)))
+    pages = [out / "papers" / "2601.01234" / "index.html", out / "papers" / "index.html",
+             ROOT / "site" / "index.html", ROOT / "site" / "demo" / "index.html"]
+    tag = ('<script data-goatcounter="https://machinechecked.goatcounter.com/count" async '
+           'src="/assets/goatcounter-count.v5.js"></script>')
+    for p in pages:
+        text = p.read_text()
+        assert tag in text and "gc.zgo.at" not in text, p
+    for p in pages[:3]:
+        assert "no cookies, no personal data" in p.read_text(), p
+    listing = (out / "papers" / "index.html").read_text()
+    assert 'data-visits="/papers/2601.01234/"' in listing
+    assert "https://machinechecked.goatcounter.com/counter/" in listing

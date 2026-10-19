@@ -66,6 +66,25 @@ def load(registry: Path) -> list[dict]:
     return list(papers.values())
 
 
+# Visits are counted with GoatCounter (no cookies, no personal data), by a pinned copy of its
+# script served from the site itself (site/assets/), so no code loads from another host.
+GOATCOUNTER = "https://machinechecked.goatcounter.com"
+COUNT_JS = "/assets/goatcounter-count.v5.js"
+COUNTING = (f'<script data-goatcounter="{GOATCOUNTER}/count" async src="{COUNT_JS}"></script>')
+COUNTING_NOTE = ('<span>Visits are counted with <a href="https://www.goatcounter.com/help/privacy">'
+                 'GoatCounter</a>: no cookies, no personal data.</span>')
+# Each listed paper's visit count, from GoatCounter's public counter; nothing is shown when it
+# cannot be read.
+VISITS_JS = f"""
+for (const el of document.querySelectorAll("[data-visits]")) {{
+  fetch("{GOATCOUNTER}/counter/" + encodeURIComponent(el.dataset.visits) + ".json")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {{ if (d && d.count) el.textContent = d.count + (d.count === "1" ? " visit" : " visits"); }})
+    .catch(() => {{}});
+}}
+"""
+
+
 def slug(paper_id: str) -> str:
     """The page's path segment: the arXiv identifier, or the curated name."""
     kind, rest = paper_id.split(":", 1)
@@ -115,7 +134,8 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
 <link rel="canonical" href="{e(canonical)}">
 {f'<noscript><link rel="stylesheet" href="/read/theme.css"><link rel="stylesheet" href="{up}assets/site.css"><style>#app {{ display: none; }}</style></noscript>' if app else f'<link rel="stylesheet" href="/read/theme.css"><link rel="stylesheet" href="{up}assets/site.css">'}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%232f6f73' stroke-width='3'/%3E%3Cpath d='M20 20l8 8' stroke='%232f6f73' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-{ld}{app}</head>
+{ld}{app}{COUNTING}
+</head>
 <body>
 {'<div id="app"></div>' if app else ''}
 <div class="wrap">
@@ -127,6 +147,7 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
   <footer>
     <span>MachineChecked · Apache-2.0</span>
     <a href="https://github.com/cgarryZA/machinechecked.org/issues/new?title={quote('Listing: ' + title)}">Report a problem with this page</a>
+    {COUNTING_NOTE}
   </footer>
 </div>
 </body>
@@ -311,7 +332,8 @@ def index_page(papers: list[dict]) -> str:
     for p in sorted(papers, key=lambda p: tex_text(p["title"]).lower()):
         rows.append(f'<li data-paper="{e(p["id"])}" data-level="{"audits" if any(f.get("audits") for f in p["formalisations"]) else "repositories"}"><a href="{e(slug(p["id"]))}/">{e(tex_text(p["title"]))}</a>'
                     f'<span class="muted"> — {e(", ".join(p["authors"]))}</span>'
-                    f'<span class="pill">{e(level(p))}</span></li>')
+                    f'<span class="pill">{e(level(p))}</span>'
+                    f'<span class="visits muted" data-visits="/papers/{e(slug(p["id"]))}/"></span></li>')
     body = f"""  <main class="paper">
     <h1>Papers</h1>
     <p class="muted">Browse papers, Lean formalisations and published audits.</p>
@@ -332,7 +354,8 @@ def index_page(papers: list[dict]) -> str:
     <section id="found" aria-live="polite" aria-label="External paper search"></section>
     <p class="small"><a href="https://github.com/cgarryZA/machinechecked.org#how-papers-get-listed">List your formalisation →</a></p>
   </main>
-  <script>{SEARCH_JS}</script>"""
+  <script>{SEARCH_JS}</script>
+  <script>{VISITS_JS}</script>"""
     return page("Papers — MachineChecked",
                 "Mathematical papers with Lean formalisations, and published MachineChecked audits.",
                 body, f"{ORIGIN}/papers/", depth=1)
