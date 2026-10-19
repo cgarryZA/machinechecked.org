@@ -40,4 +40,5 @@ ul.papers li { padding: 16px 0; }
 ul.papers li > a { font-family: var(--serif); font-size: 20px; }
 ul.papers li > .muted { display: block; margin-top: 4px; }
 ul.papers li > .pill { margin: 6px 0 0; }
+.visits:not(:empty) { margin-left: 8px; font-size: 12px; }
 [hidden] { display: none !important; }
