@@ -17,6 +17,8 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -31,12 +33,32 @@ def pdf_address(paper: dict) -> str | None:
     return links.get("pdf")
 
 
+RETRIES = 4  # further attempts after a transient failure, waiting 1, 2, 4 and 8 seconds
+
+
+def _transient(e: OSError) -> bool:
+    """A failure worth retrying: rate limiting, a server error, a dropped or timed-out
+    connection. A host answering a burst of requests (an audit's hundreds of files) with 503
+    is the common case."""
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code == 429 or e.code >= 500
+    return True
+
+
 def fetch(url: str, limit: int = 100_000_000, headers: dict | None = None) -> bytes:
     """The bytes at `url`, at most `limit` of them; the site's one way of reading the network
-    (besides discovery). Raises OSError when it cannot, ValueError when the answer is too large."""
+    (besides discovery). A transient failure is retried. Raises OSError when it cannot,
+    ValueError when the answer is too large."""
     req = urllib.request.Request(url, headers={**UA, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        data = r.read(limit + 1)
+    for attempt in range(RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                data = r.read(limit + 1)
+            break
+        except OSError as e:
+            if attempt == RETRIES or not _transient(e):
+                raise
+            time.sleep(2 ** attempt)
     if len(data) > limit:
         raise ValueError(f"{url}: larger than {limit} bytes")
     return data

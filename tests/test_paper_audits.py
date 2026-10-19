@@ -179,3 +179,33 @@ def test_a_loaded_audit_records_the_publication_it_was_read_at(served):
     used = prepare.audit_versions(audits)
     assert used == {follow.audit_key(AUDIT_URL): audits[REPO]["version"]}
     assert follow.moved([paper()], used) == []
+
+
+def test_a_transient_failure_is_retried_and_a_missing_file_is_not(monkeypatch):
+    """A host that answers a burst of requests with 503 does not make an audit unavailable; a
+    404 is not retried."""
+    import io
+    import urllib.error
+    calls = []
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def urlopen(req, timeout):
+        calls.append(req.full_url)
+        if req.full_url.endswith("busy") and len(calls) == 1:
+            raise urllib.error.HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+        if req.full_url.endswith("missing"):
+            raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+        return Response(b"ok")
+    monkeypatch.setattr(claims.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(claims.time, "sleep", lambda s: None)
+    assert claims.fetch("https://audit.example/busy") == b"ok" and len(calls) == 2
+    calls.clear()
+    with pytest.raises(urllib.error.HTTPError):
+        claims.fetch("https://audit.example/missing")
+    assert len(calls) == 1
