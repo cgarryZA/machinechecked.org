@@ -32,6 +32,24 @@
    },
    "review_status": "self-assessed",
    "audits": []
+  },
+  {
+   "repository": "cgarryZA/NavierStokesAndEuler",
+   "commit": "d1961e58748d9d2a13ff766b462ebfc40002e243",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml",
+    "note": "A fork of openai/NavierStokesAndEuler whose Lean is that of f9e8bc5; its formalization.yaml names this paper."
+   },
+   "review_status": "self-assessed",
+   "audits": [
+    {
+     "url": "https://cgarryza.github.io/NavierStokesAndEuler/",
+     "author": "Christian Garry",
+     "issues": "cgarryZA/NavierStokesAndEuler",
+     "note": "Links 77 of the paper's 79 numbered statements, each with a coverage reading (full, composed, partial or changed)."
+    }
+   ]
   }
  ]
 }
