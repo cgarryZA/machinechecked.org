@@ -5,7 +5,7 @@ that the site shows the repository as it is without a registry change on every p
 
 The build resolves the heads (`resolve`) and publishes what it used as `/follow.json`; the check
 workflow (`.github/workflows/follow.yml`) compares that with the heads now (`moved`) and rebuilds
-the site when one moved. Nothing here runs code from a listed repository: it reads commit ids.
+the site when one moved. A check that cannot run fails the workflow; it never starts a rebuild. Nothing here runs code from a listed repository: it reads commit ids.
 """
 
 from __future__ import annotations
@@ -14,23 +14,19 @@ import json
 import os
 import re
 import sys
-import urllib.request
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def head(repo: str, branch: str) -> str | None:
     """The commit `branch` of `repo` is at, or None if GitHub does not say."""
-    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/commits/{branch}",
-                                 headers={"Accept": "application/vnd.github.sha",
-                                          "User-Agent": "machinechecked.org"})
+    from claims import fetch
     token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            sha = r.read(100).decode().strip()
-    except OSError:
+        sha = fetch(f"https://api.github.com/repos/{repo}/commits/{branch}", 100,
+                    {"Accept": "application/vnd.github.sha",
+                     **({"Authorization": f"Bearer {token}"} if token else {})}).decode().strip()
+    except (OSError, ValueError, UnicodeDecodeError):
         return None
     return sha if SHA.match(sha) else None
 
@@ -89,17 +85,19 @@ def moved(ps: list[dict], published: dict) -> list[str]:
 
 
 def main() -> None:
-    """`python3 scripts/follow.py check URL`: print the branches that moved since the site at URL
-    was built, and exit 1 if any did (the workflow then rebuilds)."""
+    """`python3 scripts/follow.py check URL`: print what moved since the site at URL was built.
+    Exits 0 when nothing moved, 1 when something did (the workflow then rebuilds), and 2 when the
+    published site's record cannot be read: a failure to ask is not a change."""
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import papers
     ps = papers.load(Path(__file__).resolve().parent.parent / "registry")
+    from claims import fetch
     try:
-        with urllib.request.urlopen(sys.argv[2].rstrip("/") + "/follow.json", timeout=30) as r:
-            published = json.loads(r.read(1_000_000))
-    except (OSError, ValueError):
-        published = {}
+        published = json.loads(fetch(sys.argv[2].rstrip("/") + "/follow.json", 1_000_000))
+    except (OSError, ValueError) as e:
+        print(f"the published site's follow.json could not be read: {e}", file=sys.stderr)
+        sys.exit(2)
     changes = moved(ps, published)
     for c in changes:
         print(c)

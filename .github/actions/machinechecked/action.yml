@@ -1,0 +1,20 @@
+name: Install the pinned MachineChecked
+description: >
+  Installs Python and the MachineChecked package TOOL_VERSION pins (a released version, or a
+  commit), pure Python with no Lean or TeX, and checks that it is that release and has what the
+  site's scripts use. Every workflow of the site installs it this way.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - shell: bash
+      run: |
+        v=$(cat TOOL_VERSION)
+        if [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
+          pip install -q "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@$v"
+        else
+          pip install -q "machinechecked==$v"
+        fi
+        python scripts/build.py --check-package

@@ -1,8 +1,9 @@
 name: Site
 
-# Publishes machinechecked.org. Installs the MachineChecked package TOOL_VERSION pins (a
-# released version, or a commit), pure Python with no Lean or TeX, for its built reader;
-# assembles the site; tests it in a browser (tests/site.test.mjs); and deploys it from main only.
+# Publishes machinechecked.org. Installs the MachineChecked package TOOL_VERSION pins
+# (.github/actions/machinechecked), whose built reader the site serves unchanged at /read/;
+# assembles the site, recording what it was built from in /build.json; tests it in a browser
+# (tests/site.test.mjs); and deploys it from main only.
 # A run on another branch (a proposed reader update, see update-reader.yml) tests and stops.
 # Pages must have "GitHub Actions" as its source (Settings > Pages).
 on:
@@ -25,18 +26,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install the reader's package, and poppler to read the papers' PDFs
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
-          v=$(cat TOOL_VERSION)
-          if [[ "$v" =~ ^[0-9a-f]{40}$ ]]; then
-            pip install "machinechecked @ git+https://github.com/cgarryZA/MachineChecked@$v"
-          else
-            pip install "machinechecked==$v"
-          fi
+      - uses: ./.github/actions/machinechecked
+      - name: Install poppler, to read the papers' PDFs
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
       - name: Statements already found in the papers' PDFs
         uses: actions/cache@v4
         with:
@@ -44,9 +36,12 @@ jobs:
           key: claims-${{ hashFiles('TOOL_VERSION', 'registry/**/*.json') }}
           restore-keys: claims-
       - run: pip install pytest && python -m pytest -q tests
-      - run: python scripts/build.py --out _site --claims-cache .cache/claims --check-audits --follow
+      - name: Read the papers, followed branches and audits (the only network step)
+        run: python scripts/prepare.py --out .cache/snapshot --claims-cache .cache/claims --follow
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Render the site from that snapshot
+        run: python scripts/build.py --snapshot .cache/snapshot --out _site
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
