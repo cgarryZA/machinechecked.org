@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2008.12189",
+ "title": "Uniformization of Riemann surfaces revisited",
+ "authors": [
+  "Cipriana Anghel",
+  "Rares Stan"
+ ],
+ "year": 2020,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2008.12189"
+ },
+ "formalisations": [
+  {
+   "repository": "rkirov/jordan_pick",
+   "commit": "b3c9b7cf7358bf81a077d78ad67e6e8247869ddd",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}
