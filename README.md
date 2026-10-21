@@ -34,7 +34,8 @@ npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 
 The `Site` workflow tests and builds each pull request, then deploys `main` to GitHub Pages.
 Browser tests cover project switching, a paper page with a published audit (statuses, deep links,
-exact places), audit import errors, catalogue queries and filters,
+exact places), a paper's versions (a page each, and the drop-down between them, at desktop and
+phone widths), audit import errors, catalogue queries and filters,
 external search failures and cancellation, and responsive homepage previews.
 Synthetic fixtures exercise the current data contract; older data requests an audit rebuild.
 
@@ -60,6 +61,15 @@ a repository's `formalization.yaml` names it as a source it formalizes (`listing
 `stated_by.source: "formalization.yaml"`); a paper not on arXiv is added by the maintainer
 (`listing: "curated"`). An audit is added by its address (where its `audit.json` is) and its
 author's name; the page opens it in the reader.
+
+**Versions of a paper.** An audit pins one version of its paper (arXiv v1, or an unpublished
+manuscript at a commit), as its `audit.json` says. A formalisation can list an audit of each
+version; an audit's `version` (`arxiv:<id>v1`, `manuscript:<commit>`) names the version it must
+pin, and one left out (an audit that follows the latest manuscript) is shown at the version it
+pins. When a paper's audits pin several versions, each version has its own page,
+`/papers/<id>/v1/` or `/papers/<id>/manuscript-<commit>/`, with its own PDF (arXiv's, or the one
+the manuscript's audit carries), statements and audits, and the reader offers a drop-down between
+them; `/papers/<id>/` shows the latest published version.
 
 ## How the site is built
 

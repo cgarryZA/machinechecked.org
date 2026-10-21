@@ -6,8 +6,9 @@ branches, finds each paper's statements in its PDF (`claims.claims_for`, cached)
 registered audit (`claims.audits_for`). It writes them to a directory:
 
     snapshot.json     the registry as shown (followed listings at their resolved commits), each
-                      paper's statements or why its PDF was not read, each audit as loaded or why
-                      it was not, and what the follow check compares (`follow.json`)
+                      paper's statements or why its PDF was not read (and, for a paper whose
+                      audits pin several arXiv versions, each version's), each audit as loaded or
+                      why it was not, and what the follow check compares (`follow.json`)
     pdfs/<edition>    the audited PDFs the audits carry
 
 Rendering the same snapshot again gives the same site, without the network. A fetch that fails
@@ -25,7 +26,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA = "machinechecked.org/snapshot@1"
+SCHEMA = "machinechecked.org/snapshot@2"
 
 
 def audit_versions(audits: dict) -> dict:
@@ -46,6 +47,7 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
             offline: bool = False, log=print) -> dict:
     """Write the snapshot to `out` (replacing it) and return it. With `offline`, nothing is
     fetched: every PDF and audit is recorded as not read in this snapshot."""
+    import build
     import claims
     import follow as fl
     import papers
@@ -55,7 +57,7 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
         import shutil
         shutil.rmtree(out)
     (out / "pdfs").mkdir(parents=True)
-    found, audits = {}, {}
+    found, audits, found_versions = {}, {}, {}
     for p in ps:
         if offline or claims_cache is None:
             found[p["id"]] = {"state": "not-read", "detail": "This build did not read the PDF."}
@@ -63,18 +65,27 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
             claims_cache.mkdir(parents=True, exist_ok=True)
             found[p["id"]] = claims.claims_for(p, claims_cache, log=log)
         if offline:
-            loaded = {f["repository"]: {"state": "unavailable", "url": f["audits"][0]["url"],
-                                        "detail": "This build did not load the audit."}
-                      for f in p["formalisations"] if f.get("audits")}
+            loaded = {(f["repository"] if n == 1 else f"{f['repository']}@{n}"):
+                      {"state": "unavailable", "url": a["url"], "repository": f["repository"],
+                       "listing_version": a.get("version"),
+                       "detail": "This build did not load the audit."}
+                      for f in p["formalisations"] for n, a in enumerate(f.get("audits", []), 1)}
         else:
             loaded = claims.audits_for(p, log=log)
             used.update(audit_versions(loaded))
+            # A paper whose audits pin several versions has a page per version: the statements
+            # of each arXiv version are read from that version's PDF.
+            if claims_cache is not None and len(build.pinned_versions(loaded)) > 1:
+                found_versions[p["id"]] = {
+                    v["id"]: claims.claims_for(p, claims_cache, log=log, version=v["number"])
+                    for v in build.pinned_versions(loaded).values() if v.get("number")}
         for repo, a in loaded.items():
             for edition, raw in a.pop("pdfs", {}).items():
                 (out / "pdfs" / f"{edition}.pdf").write_bytes(raw)
                 a.setdefault("pdf_files", []).append(edition)
         audits[p["id"]] = loaded
-    snap = {"schema": SCHEMA, "registry": ps, "found": found, "audits": audits, "follow": used}
+    snap = {"schema": SCHEMA, "registry": ps, "found": found, "found_versions": found_versions,
+            "audits": audits, "follow": used}
     (out / "snapshot.json").write_text(json.dumps(snap, sort_keys=True), encoding="utf-8")
     return snap
 
@@ -89,7 +100,7 @@ def read(snapshot: Path) -> dict:
         sys.exit(f"{snapshot}: no readable snapshot ({e}); run scripts/prepare.py first")
     if not isinstance(snap, dict) or snap.get("schema") != SCHEMA:
         sys.exit(f"{snapshot}: not a {SCHEMA} snapshot; run scripts/prepare.py again")
-    for key in ("registry", "found", "audits", "follow"):
+    for key in ("registry", "found", "found_versions", "audits", "follow"):
         if key not in snap:
             sys.exit(f"{snapshot}: the snapshot has no {key}")
     for p in snap["registry"]:

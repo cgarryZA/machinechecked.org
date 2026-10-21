@@ -201,8 +201,10 @@ def formalisation(f: dict, paper: dict) -> str:
     if audits:
         parts.append("<ul class=\"audits\">")
         for a in audits:
-            parts.append(f'<li><a class="btn primary" href="{e(reader_url(a["url"]))}">Open the audit</a> '
-                         f'by {e(a["author"])}'
+            label = f' <span class="small muted">({e(a["version_label"])})</span>' \
+                if a.get("version_label") else ""
+            parts.append(f'<li><a class="btn primary" href="{e(reader_url(a["url"]))}">Open the audit</a>'
+                         f'{label} by {e(a["author"])}'
                          + (f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else "")
                          + "</li>")
         parts.append("</ul>")
@@ -213,8 +215,21 @@ def formalisation(f: dict, paper: dict) -> str:
     return "\n".join(parts)
 
 
-def paper_page(paper: dict, reader: str | None = None) -> str:
+def versions_line(paper: dict, here: str) -> str:
+    """The versions of the paper that have pages, as links; `here` is this page's address."""
+    vs = paper.get("versions_shown") or []
+    if not vs:
+        return ""
+    items = [f'<a href="{e(v["href"])}"' + (' aria-current="page"' if v["href"] == here else "")
+             + f'>{e(v["label"])}</a>' for v in vs]
+    return f'    <p class="small">Versions: {" · ".join(items)}</p>'
+
+
+def paper_page(paper: dict, reader: str | None = None, version: dict | None = None) -> str:
+    """The paper's page; with `version` (an entry of `versions_shown`), the page of that version
+    of the paper, at its own address."""
     s = slug(paper["id"])
+    here = version["href"] if version else f"/papers/{s}/"
     links = paper["links"]
     ident = (f'arXiv:{e(paper["id"].split(":", 1)[1])}' if paper["id"].startswith("arxiv:")
              else "Curated listing")
@@ -231,6 +246,10 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
             f'    <p class="authors">{e(", ".join(paper["authors"]))}'
             + (f" · {paper['year']}" if paper.get("year") else "") + "</p>",
             f'    <p class="small muted">{ident}' + (" · " + " · ".join(src) if src else "") + "</p>"]
+    if paper.get("versions_shown"):
+        default = next((v for v in paper["versions_shown"] if v["default"]), None)
+        body.append(versions_line(paper, version["href"] if version else
+                                  (default["href"] if default else here)))
     if paper.get("abstract"):
         body.append(f'    <p class="abstract">{e(paper["abstract"])}</p>')
     body.append(f"    <h2>Lean formalisations ({len(fs)})</h2>")
@@ -255,8 +274,9 @@ def paper_page(paper: dict, reader: str | None = None) -> str:
         jsonld["datePublished"] = str(paper["year"])
     desc = (f"{tex_text(paper['title'])}: its Lean formalisations and published audits on MachineChecked. "
             f"{level(paper)}.")
-    return page(f"{tex_text(paper['title'])} — MachineChecked", desc, "\n".join(body),
-                f"{ORIGIN}/papers/{s}/", jsonld, reader=reader)
+    title = tex_text(paper["title"]) + (f" ({version['label']})" if version else "")
+    return page(f"{title} — MachineChecked", desc, "\n".join(body), f"{ORIGIN}{here}", jsonld,
+                depth=3 if version else 2, reader=reader)
 
 
 # Local papers filter immediately; readers can also request external discovery.
@@ -390,4 +410,8 @@ def write(out: Path, papers: list[dict], reader_index: str | None = None) -> lis
         (d / "index.html").write_text(paper_page(p, reader), encoding="utf-8")
         (d / "badge.svg").write_text(badge(level(p)), encoding="utf-8")
         urls.append(f"{ORIGIN}/papers/{slug(p['id'])}/")
+        for v in p.get("versions_shown") or []:
+            (d / v["slug"]).mkdir(parents=True, exist_ok=True)
+            (d / v["slug"] / "index.html").write_text(paper_page(p, reader, v), encoding="utf-8")
+            urls.append(f"{ORIGIN}{v['href']}")
     return urls

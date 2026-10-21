@@ -15,7 +15,6 @@
    "repository": "cgarryZA/mvfbsdej-well-posedness-lean",
    "commit": "d1e52083f9a7a195d5d1284ae8a70f91459d1b41",
    "follow": "main",
-   "paper_version": "v1",
    "stated_by": {
     "source": "formalization.yaml",
     "file": "formalization.yaml"
@@ -23,10 +22,17 @@
    "review_status": "Author reviews; per-claim results in the audit.",
    "audits": [
     {
-     "url": "https://cgarryza.github.io/mvfbsdej-well-posedness-lean/",
+     "url": "https://cgarryza.github.io/mvfbsdej-well-posedness-lean/v1/",
+     "version": "arxiv:2608.23203v1",
      "author": "Christian Garry",
      "issues": "cgarryZA/mvfbsdej-well-posedness-lean",
-     "note": "Published by the project’s audit workflow."
+     "note": "arXiv v1, built from the project’s frozen branch audit-v1."
+    },
+    {
+     "url": "https://cgarryza.github.io/mvfbsdej-well-posedness-lean/latest/",
+     "author": "Christian Garry",
+     "issues": "cgarryZA/mvfbsdej-well-posedness-lean",
+     "note": "The latest manuscript, built from main by the project’s audit workflow."
     }
    ]
   }

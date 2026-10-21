@@ -98,10 +98,11 @@ def test_an_offline_snapshot_reads_nothing_and_says_so(tmp_path, monkeypatch):
     (lambda d: (d / "snapshot.json").write_text("{"), "no readable snapshot"),
     (lambda d: (d / "snapshot.json").write_text('{"schema": "other"}'), "not a machinechecked.org"),
     (lambda d: (d / "snapshot.json").write_text(json.dumps(
-        {"schema": prepare.SCHEMA, "registry": [], "found": {}, "audits": {}})), "has no follow"),
+        {"schema": prepare.SCHEMA, "registry": [], "found": {}, "found_versions": {},
+         "audits": {}})), "has no follow"),
     (lambda d: (d / "snapshot.json").write_text(json.dumps(
         {"schema": prepare.SCHEMA, "registry": [{**paper(), "links": {"pdf": "javascript:x"}}],
-         "found": {}, "audits": {}, "follow": {}})), "curated:toy-paper"),
+         "found": {}, "found_versions": {}, "audits": {}, "follow": {}})), "curated:toy-paper"),
 ])
 def test_a_missing_or_malformed_snapshot_stops_the_render(tmp_path, damage, reason):
     prepare.prepare(registry(tmp_path, paper()), tmp_path / "snapshot", None, offline=True,

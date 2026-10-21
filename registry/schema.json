@@ -117,7 +117,8 @@
      },
      "paper_version": {
       "type": "string",
-      "maxLength": 40
+      "maxLength": 40,
+      "description": "The paper version every audit of this formalisation pins (an arXiv version number such as v1). A listing whose audits pin different versions leaves it out and names each audit's `version`."
      },
      "stated_by": {
       "type": "object",
@@ -170,6 +171,11 @@
         "note": {
          "type": "string",
          "maxLength": 300
+        },
+        "version": {
+         "type": "string",
+         "pattern": "^(arxiv:([0-9]{4}\\.[0-9]{4,5}|[a-z-]+(\\.[A-Z]{2})?/[0-9]{7})v[0-9]+|manuscript:[0-9a-f]{7,40})$",
+         "description": "The version of the paper the audit pins, as its descriptor's paper_version.id gives it (arxiv:2601.01234v1, or manuscript:<commit> for an unpublished manuscript); an audit that pins another is refused. Left out for an audit that follows the latest manuscript: its own descriptor then says which version it pins."
         }
        }
       }
