@@ -85,10 +85,14 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
-def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
-    """One paper page's data under `out/papers/<slug>/data/`, in the reader's format: the
-    statements found in its PDF (`claims.claims_for`) joined with its loaded audits
-    (`claims.audits_for`) by MachineChecked. Returns the page's index."""
+def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Path | None = None,
+                pdf: str | None = None, version: str | None = None,
+                versions: list[dict] | None = None) -> dict:
+    """One paper page's data under `<page>/data/` (the page is `out/papers/<slug>/`, or `where`),
+    in the reader's format: the statements found in its PDF (`claims.claims_for`) joined with its
+    loaded audits (by repository) by MachineChecked. A page of one version of the paper shows that
+    version's PDF (`pdf`, or none), and gets its `version` and every version's entry (`versions`).
+    Returns the page's index."""
     import claims
     import papers
     from prooflens.paper import write_paper_site, apply_audits
@@ -102,8 +106,144 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict) -> dict:
     # The reader's panel offers each listing's report link as the static page builds it.
     entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
                                      for f in p["formalisations"]]}
-    return write_paper_site(out / "papers" / papers.slug(p["id"]), entry, records,
-                            found and found["page_size"], claims.view_pdf(p), audits=audits)
+    return write_paper_site(where or out / "papers" / papers.slug(p["id"]), entry, records,
+                            found and found["page_size"], pdf if version else claims.view_pdf(p),
+                            audits=audits, versions=versions, version=version)
+
+
+# -- versions of a paper ------------------------------------------------------------------------
+#
+# The audits of a paper may pin different versions of it (arXiv v1, an unpublished manuscript at a
+# commit). Each version then has its own page, `/papers/<slug>/<version>/`, with its own PDF,
+# statements and audits, and the reader's drop-down between them; the paper's plain address
+# shows its latest published version. A paper whose audits pin at most one version keeps the one
+# page it had.
+
+def label_audits(p: dict, audits: dict) -> None:
+    """Give each registered audit of `p` the label of the version it pins, from its loaded record
+    (`claims.audits_for` keys a repository's n-th audit `<repository>@<n>`)."""
+    for f in p["formalisations"]:
+        for n, a in enumerate(f.get("audits", []), 1):
+            got = audits.get(f["repository"] if n == 1 else f"{f['repository']}@{n}") or {}
+            pv = got.get("paper_version") if got.get("state") == "loaded" else None
+            if pv and pv.get("label"):
+                a["version_label"] = pv["label"]
+
+
+def pinned_versions(audits: dict) -> dict:
+    """The versions of the paper its loaded audits pin, by identifier, in the order a reader
+    lists them: published versions by number, then manuscripts."""
+    vs = {}
+    for a in audits.values():
+        pv = a.get("paper_version") if a.get("state") == "loaded" else None
+        if pv and pv.get("id"):
+            vs.setdefault(pv["id"], pv)
+
+    def order(v):
+        n = v.get("number") or ""
+        return (0, int(n[1:]) if re.fullmatch(r"v[0-9]+", n) else 0, v["id"]) \
+            if v["kind"] == "published" else (1, 0, v["id"])
+    return dict(sorted(vs.items(), key=lambda kv: order(kv[1])))
+
+
+def default_version(versions: dict) -> str:
+    """The version the paper's plain address shows: its latest published version, else the first
+    one listed."""
+    published = [v for v in versions.values() if v["kind"] == "published"]
+    return (published[-1] if published else next(iter(versions.values())))["id"]
+
+
+def version_slug(v: dict) -> str:
+    """The path segment of a version's page: `v1` for arXiv v1, `manuscript-abc1234` for an
+    unpublished manuscript at commit abc1234, `published-<digest>` for another published
+    version."""
+    if v["kind"] == "manuscript":
+        return "manuscript-" + v["revision"][:7]
+    if re.fullmatch(r"v[0-9]+", v.get("number") or ""):
+        return v["number"]
+    return "published-" + hashlib.sha256(v["id"].encode()).hexdigest()[:12]
+
+
+def page_audits(audits: dict, version: str | None, default: str | None) -> dict:
+    """The audits a page shows, by repository: each repository's first loaded audit that pins the
+    page's version (any version, on a paper with one page); else, on the page of the version its
+    listing names (or, when it names none, on the default version's page), its first audit that
+    failed to load, shown with its import state. A loaded audit that names no version, on a paper
+    with several, is shown there as incompatible."""
+    from prooflens.published import same_version
+    out = {}
+    for a in audits.values():
+        if a["repository"] in out or a.get("state") != "loaded":
+            continue
+        pv = a.get("paper_version")
+        if version is None or (pv and same_version(pv["id"], version)):
+            out[a["repository"]] = a
+    for a in audits.values():
+        if a["repository"] in out or (a.get("state") == "loaded" and a.get("paper_version")):
+            continue
+        named = a.get("listing_version")
+        if version is None or (same_version(named, version) if named else version == default):
+            out[a["repository"]] = a if a.get("state") != "loaded" else {
+                "state": "incompatible", "url": a["url"], "repository": a["repository"],
+                "detail": "The audit does not name the version of the paper it pins"}
+    return out
+
+
+def version_pdf(p: dict, v: dict, audits: dict, here: str) -> tuple[str | None, dict | None]:
+    """A version page's PDF and, for a manuscript, the statements found in it (none: the page
+    lists its audits' claims, at their places in that PDF). A published arXiv version is shown
+    from arXiv; an unpublished manuscript from the PDF its audit carries, under the page's own
+    `data/papers/` (`here` is the page's address)."""
+    import claims
+    if v["kind"] == "published" and v.get("number"):
+        return claims.view_pdf(p, v["number"]), None
+    for a in audits.values():
+        ap = a.get("paper") or {}
+        if a.get("state") == "loaded" and ap.get("edition"):
+            return (f"{here}data/papers/{ap['edition']}.pdf",
+                    {"claims": [], "page_size": ap.get("page_size"),
+                     "pdf_sha256": ap.get("pdf_sha256")})
+    return None, None
+
+
+def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
+                   audits: dict) -> list[dict]:
+    """The pages of a paper whose audits pin several versions: the default version's at the
+    paper's plain address and at its own, and every other version's at its own. Returns the
+    versions as the static pages list them (`label`, `href`, `current` for the default)."""
+    import copy
+    import papers
+    versions = pinned_versions(audits)
+    default = default_version(versions)
+    base = f"/papers/{papers.slug(p['id'])}/"
+    pages = {}
+    for vid, v in versions.items():
+        here = base + version_slug(v) + "/"
+        shown = page_audits(audits, vid, default)
+        pdf, own = version_pdf(p, v, shown, here)
+        pages[vid] = {"here": here, "audits": shown, "pdf": pdf,
+                      "found": own if v["kind"] == "manuscript" else by_version.get(vid)}
+    entries = [{"id": vid, "kind": v["kind"], "revision": v.get("revision"),
+                "href": pages[vid]["here"], "pdf": pages[vid]["pdf"],
+                "audits": [{"url": a["url"], "author": a.get("author"), "repository": r}
+                           for r, a in pages[vid]["audits"].items() if a.get("state") == "loaded"]}
+               for vid, v in versions.items()]
+    # The plain address first: writing a page replaces its directory, and the versions' pages
+    # are inside it.
+    order = [(default, out / "papers" / papers.slug(p["id"]))] + \
+        [(vid, out / "papers" / papers.slug(p["id"]) / version_slug(v))
+         for vid, v in versions.items()]
+    for vid, where in order:
+        page = pages[vid]
+        q = copy.deepcopy(p)
+        pdf = page["pdf"]
+        if where.name != version_slug(versions[vid]) and pdf and pdf.startswith(page["here"]):
+            pdf = base + pdf[len(page["here"]):]
+        write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries)
+        if vid == default and where == order[0][1]:
+            p["formalisations"] = q["formalisations"]
+    return [{"label": v["label"], "href": pages[vid]["here"], "slug": version_slug(v),
+             "default": vid == default} for vid, v in versions.items()]
 
 
 def build(out: Path, reader: Path, snapshot: Path) -> None:
@@ -119,9 +259,15 @@ def build(out: Path, reader: Path, snapshot: Path) -> None:
     shutil.copytree(ROOT / "site", out)
     shutil.copytree(reader, out / "read")
     # Each paper page's data, in the reader's standard format, beside the page (written first:
-    # it replaces the page's directory).
+    # it replaces the page's directory); a page per version of a paper whose audits pin several.
     for p in ps:
-        write_paper(out, p, snap["found"].get(p["id"]), snap["audits"].get(p["id"], {}))
+        audits = snap["audits"].get(p["id"], {})
+        label_audits(p, audits)
+        if len(pinned_versions(audits)) > 1:
+            p["versions_shown"] = write_versions(out, p, snap["found"].get(p["id"]),
+                                                 snap["found_versions"].get(p["id"], {}), audits)
+        else:
+            write_paper(out, p, snap["found"].get(p["id"]), page_audits(audits, None, None))
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(

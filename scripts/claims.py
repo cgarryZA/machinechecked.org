@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import tempfile
 import time
 import urllib.error
@@ -25,11 +26,12 @@ from pathlib import Path
 UA = {"User-Agent": "machinechecked.org (paper pages; https://machinechecked.org)"}
 
 
-def pdf_address(paper: dict) -> str | None:
-    """Where the build fetches the PDF: arXiv's address for automated access, else the link."""
+def pdf_address(paper: dict, version: str | None = None) -> str | None:
+    """Where the build fetches the PDF: arXiv's address for automated access (of `version`, such
+    as `v1`, when given), else the link."""
     links = paper.get("links", {})
     if paper["id"].startswith("arxiv:"):
-        return "https://export.arxiv.org/pdf/" + paper["id"].split(":", 1)[1]
+        return "https://export.arxiv.org/pdf/" + paper["id"].split(":", 1)[1] + (version or "")
     return links.get("pdf")
 
 
@@ -76,25 +78,28 @@ def alignment(repo: str, commit: str) -> dict | None:
     return fy if isinstance(fy, dict) else None
 
 
-def view_pdf(paper: dict) -> str | None:
-    """The PDF the reader shows: the paper's own PDF link, else arXiv's."""
+def view_pdf(paper: dict, version: str | None = None) -> str | None:
+    """The PDF the reader shows: the paper's own PDF link, else arXiv's (of `version`, such as
+    `v1`, when given)."""
     links = paper.get("links", {})
-    if (links.get("pdf") or "").startswith("https://"):
+    if version is None and (links.get("pdf") or "").startswith("https://"):
         return links["pdf"]
     if (links.get("arxiv") or "").startswith("https://arxiv.org/abs/"):
-        return links["arxiv"].replace("/abs/", "/pdf/", 1)
+        pdf = links["arxiv"].replace("/abs/", "/pdf/", 1)
+        return re.sub(r"v[0-9]+$", "", pdf) + (version or "")
     return None
 
 
-def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
+def claims_for(paper: dict, cache: Path, log=print, version: str | None = None) -> dict | None:
     """The paper's statements, with each repository's declared links (`prooflens.paper.
     paper_claims`), its page size and its PDF's digest; None when it has no PDF address, and
-    `{"state": "unreadable", "detail": …}` when its PDF could not be read."""
+    `{"state": "unreadable", "detail": …}` when its PDF could not be read. With `version` (an
+    arXiv version number such as `v1`), the statements of that version's PDF."""
     import subprocess
     from prooflens.paper import paper_claims
     from prooflens.pdfclaims import claims_from_pdf
 
-    url = pdf_address(paper)
+    url = pdf_address(paper, version)
     if not url:
         return None
     fs = paper.get("formalisations", [])
@@ -128,15 +133,24 @@ def claims_for(paper: dict, cache: Path, log=print) -> dict | None:
 
 
 def audits_for(paper: dict, log=print) -> dict:
-    """Complete public snapshots, or a visible import state for each registered audit."""
+    """Complete public snapshots, or a visible import state, of every registered audit. A
+    repository's first audit is under the repository's name; a further one, such as an audit of
+    another version of the paper, under `<repository>@<n>` (n = 2, 3, …). Each record names its
+    `repository` and the version its listing names (`listing_version`, or None)."""
     from prooflens.paper import load_published_audit
     out = {}
     for f in paper.get("formalisations", []):
-        for a in f.get("audits", [])[:1]:
+        for n, a in enumerate(f.get("audits", []), 1):
+            key = f["repository"] if n == 1 else f"{f['repository']}@{n}"
+            # A listing that names its audit's version supersedes the formalisation's
+            # `paper_version`, which names one version for all its audits.
+            project = {k: v for k, v in f.items() if k != "paper_version"} if a.get("version") \
+                else f
             try:
-                out[f["repository"]] = load_published_audit(paper, f, a, fetch)
+                rec = load_published_audit(paper, project, a, fetch)
             except (OSError, ValueError, KeyError, TypeError) as e:
                 state = "unavailable" if isinstance(e, OSError) else "incompatible"
-                out[f["repository"]] = {"state": state, "detail": str(e), "url": a["url"]}
+                rec = {"state": state, "detail": str(e), "url": a["url"]}
                 log(f"{paper['id']}: audit {state}: {e}")
+            out[key] = {**rec, "repository": f["repository"], "listing_version": a.get("version")}
     return out

@@ -76,7 +76,7 @@ def moved(ps: list[dict], published: dict) -> list[str]:
             out.append(f"{key(f)}: {str(published.get(key(f)))[:12]} -> {sha[:12]}")
     for p in ps:
         for f in p["formalisations"]:
-            for a in f.get("audits", [])[:1]:
+            for a in f.get("audits", []):
                 current = published_audit_version(a["url"])
                 k = audit_key(a["url"])
                 if current and published.get(k) != current:
