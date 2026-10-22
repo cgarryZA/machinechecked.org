@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2604.25074",
+ "title": "The smoothest average and some extremal problems for polynomials",
+ "authors": [
+  "José Gaitán",
+  "Carlos Garzón",
+  "José Madrid"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2604.25074"
+ },
+ "formalisations": [
+  {
+   "repository": "jaumededios/sharp_smoothing",
+   "commit": "26a961ce32338feed4027c1fbfc8a3c73378de62",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

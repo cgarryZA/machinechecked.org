@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:0801.0805",
+ "title": "One curious proof of Fermat's little theorem",
+ "authors": [
+  "Giedrius Alkauskas"
+ ],
+ "year": 2008,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/0801.0805"
+ },
+ "formalisations": [
+  {
+   "repository": "seewoo5/DifferentProofs",
+   "commit": "5093e4f59d6df95373b7456c7408e7bb11f2c4d2",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

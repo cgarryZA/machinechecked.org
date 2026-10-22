@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2609.25107",
+ "title": "Deletion thresholds and exponential examples for complete sequences",
+ "authors": [
+  "Jesse Geneson"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.25107"
+ },
+ "formalisations": [
+  {
+   "repository": "IamMikeHelsel/erdos-348-lean",
+   "commit": "3c73026398eeed70eb623159bfee953c965fd5c3",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

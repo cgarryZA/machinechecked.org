@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2609.37678",
+ "title": "Local conjugacy in prosolvable groups",
+ "authors": [
+  "Michael C. Burkhart"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.37678"
+ },
+ "formalisations": [
+  {
+   "repository": "burkh4rt/Local-Conjugacy-Formalized",
+   "commit": "a6ccde0b11cbef7dfd8344cbd21f5c6fd8edc887",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

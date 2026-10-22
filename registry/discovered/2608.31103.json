@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2608.31103",
+ "title": "Finitely generated positive cones in $F_n \\times \\mathbb{Z}$",
+ "authors": [
+  "Hang Lu Su"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.31103"
+ },
+ "formalisations": [
+  {
+   "repository": "homeowmorphism/finitely-generated-positive-cones-in-fnz",
+   "commit": "20bfd7cb2abb773f2426af11cd0217b415f7497b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

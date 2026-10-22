@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2407.08636",
+ "title": "Quantitative concatenation for polynomial box norms",
+ "authors": [
+  "Noah Kravitz",
+  "Borys Kuca",
+  "James Leng"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2407.08636"
+ },
+ "formalisations": [
+  {
+   "repository": "cadamcat/hindman-sums-products-lean4",
+   "commit": "09b8fde6e5cd5c7217c93f212b5162092aaa848b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

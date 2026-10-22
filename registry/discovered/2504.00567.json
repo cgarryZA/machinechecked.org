@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2504.00567",
+ "title": "Boundary regularity for non-local operators with symmetric kernels and vanishing horizon",
+ "authors": [
+  "Philipp Svinger"
+ ],
+ "year": 2025,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2504.00567"
+ },
+ "formalisations": [
+  {
+   "repository": "philipp-svinger/Math_Lean_Palomar_Vanishing-Horizon-Boundary-Reg",
+   "commit": "b90e5cc8ac0d36dfedd84cbfe517acc58cbc1a4a",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

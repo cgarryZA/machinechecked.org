@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2604.25246",
+ "title": "Chebyshev quotients, Demazure multiplicities, and Dyck-path models",
+ "authors": [
+  "Rekha Biswal",
+  "Ken Ono",
+  "Jujian Zhang"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2604.25246"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/Biswal",
+   "commit": "62c945fb6c06ac2f915bbfd7521e6c807e47e92a",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}
