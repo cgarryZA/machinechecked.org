@@ -55,6 +55,11 @@ def require_package(exact: bool = False) -> str:
             missing.append(module)
             continue
         missing += [f"{module}.{n}" for n in names if not hasattr(m, n)]
+    if "prooflens.paper.write_paper_site" not in missing and "prooflens.paper" not in missing:
+        import inspect
+        from prooflens.paper import write_paper_site
+        if "stars" not in inspect.signature(write_paper_site).parameters:
+            missing.append("prooflens.paper.write_paper_site(stars=…)")
     if missing:
         sys.exit(f"machinechecked {have} lacks what the site uses: {', '.join(missing)}; "
                  f"TOOL_VERSION pins {pinned()}")
@@ -87,12 +92,14 @@ def pages(out: Path) -> list[str]:
 
 def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Path | None = None,
                 pdf: str | None = None, version: str | None = None,
-                versions: list[dict] | None = None) -> dict:
+                versions: list[dict] | None = None, stars: dict | None = None) -> dict:
     """One paper page's data under `<page>/data/` (the page is `out/papers/<slug>/`, or `where`),
     in the reader's format: the statements found in its PDF (`claims.claims_for`) joined with its
     loaded audits (by repository) by MachineChecked. A page of one version of the paper shows that
     version's PDF (`pdf`, or none), and gets its `version` and every version's entry (`versions`).
-    Returns the page's index."""
+    `stars` (repository: GitHub star count, or None) orders the page's audits: the reader opens on
+    the most-starred, and keeps the registry's order when a count is missing. Returns the page's
+    index."""
     import claims
     import papers
     from prooflens.paper import write_paper_site, apply_audits
@@ -108,7 +115,8 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
                                      for f in p["formalisations"]]}
     return write_paper_site(where or out / "papers" / papers.slug(p["id"]), entry, records,
                             found and found["page_size"], pdf if version else claims.view_pdf(p),
-                            audits=audits, versions=versions, version=version)
+                            audits=audits, versions=versions, version=version,
+                            stars={r: n for r, n in (stars or {}).items() if n is not None})
 
 
 # -- versions of a paper ------------------------------------------------------------------------
@@ -212,7 +220,7 @@ def version_pdf(p: dict, v: dict, audits: dict, here: str) -> tuple[str | None, 
 
 
 def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
-                   audits: dict) -> list[dict]:
+                   audits: dict, stars: dict | None = None) -> list[dict]:
     """The pages of a paper whose audits pin several versions: the default version's at the
     paper's plain address and at its own, and every other version's at its own. Returns the
     versions as the static pages list them (`label`, `href`, `current` for the default)."""
@@ -245,7 +253,7 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
         pdf = page["pdf"]
         if where.name != version_slug(versions[vid]) and pdf and pdf.startswith(page["here"]):
             pdf = base + pdf[len(page["here"]):]
-        write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries)
+        write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries, stars)
         if vid == default and where == order[0][1]:
             p["formalisations"] = q["formalisations"]
     return [{"id": vid, "label": v["label"], "href": pages[vid]["here"], "slug": version_slug(v),
@@ -271,9 +279,11 @@ def build(out: Path, reader: Path, snapshot: Path) -> None:
         label_audits(p, audits)
         if len(pinned_versions(audits)) > 1:
             p["versions_shown"] = write_versions(out, p, snap["found"].get(p["id"]),
-                                                 snap["found_versions"].get(p["id"], {}), audits)
+                                                 snap["found_versions"].get(p["id"], {}), audits,
+                                                 snap["stars"])
         else:
-            write_paper(out, p, snap["found"].get(p["id"]), page_audits(audits, None, None))
+            write_paper(out, p, snap["found"].get(p["id"]), page_audits(audits, None, None),
+                        stars=snap["stars"])
     papers.write(out, ps, (out / "read" / "index.html").read_text(encoding="utf-8"))
     urls = pages(out)
     (out / "sitemap.xml").write_text(

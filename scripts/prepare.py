@@ -3,12 +3,15 @@
 This is the site's only network step besides discovery (`discover.py`) and the follow check
 (`follow.py check`). For the validated registry it asks GitHub for the heads of followed
 branches, finds each paper's statements in its PDF (`claims.claims_for`, cached), and loads each
-registered audit (`claims.audits_for`). It writes them to a directory:
+registered audit (`claims.audits_for`), and asks GitHub for the star count of each audited
+repository. It writes them to a directory:
 
     snapshot.json     the registry as shown (followed listings at their resolved commits), each
                       paper's statements or why its PDF was not read (and, for a paper whose
                       audits pin several arXiv versions, each version's), each audit as loaded or
-                      why it was not, and what the follow check compares (`follow.json`)
+                      why it was not, what the follow check compares (`follow.json`), and the
+                      GitHub star count of each repository with an audit (`stars`, None when
+                      GitHub did not answer), which orders a paper's audits
     pdfs/<edition>    the audited PDFs the audits carry
 
 Rendering the same snapshot again gives the same site, without the network. A fetch that fails
@@ -57,7 +60,7 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
         import shutil
         shutil.rmtree(out)
     (out / "pdfs").mkdir(parents=True)
-    found, audits, found_versions = {}, {}, {}
+    found, audits, found_versions, counts = {}, {}, {}, {}
     for p in ps:
         if offline or claims_cache is None:
             found[p["id"]] = {"state": "not-read", "detail": "This build did not read the PDF."}
@@ -84,8 +87,14 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
                 (out / "pdfs" / f"{edition}.pdf").write_bytes(raw)
                 a.setdefault("pdf_files", []).append(edition)
         audits[p["id"]] = loaded
+        # The star count of each repository with an audit, which orders a page's audits; one
+        # GitHub does not give is recorded as None.
+        if not offline:
+            for f in p["formalisations"]:
+                if f.get("audits") and f["repository"] not in counts:
+                    counts[f["repository"]] = claims.stars(f["repository"])
     snap = {"schema": SCHEMA, "registry": ps, "found": found, "found_versions": found_versions,
-            "audits": audits, "follow": used}
+            "audits": audits, "follow": used, "stars": counts}
     (out / "snapshot.json").write_text(json.dumps(snap, sort_keys=True), encoding="utf-8")
     return snap
 
@@ -103,6 +112,7 @@ def read(snapshot: Path) -> dict:
     for key in ("registry", "found", "found_versions", "audits", "follow"):
         if key not in snap:
             sys.exit(f"{snapshot}: the snapshot has no {key}")
+    snap.setdefault("stars", {})
     for p in snap["registry"]:
         papers.validate(p, f"{snapshot.name}: {p.get('id')}")
     for loaded in snap["audits"].values():

@@ -66,6 +66,22 @@ def fetch(url: str, limit: int = 100_000_000, headers: dict | None = None) -> by
     return data
 
 
+def stars(repo: str) -> int | None:
+    """The repository's GitHub star count, or None when GitHub does not say (the site then keeps
+    the registry's order of the paper's audits). Uses `GITHUB_TOKEN` when it is set; GitHub
+    answers without one, with a lower rate limit."""
+    import os
+    token = os.environ.get("GITHUB_TOKEN")
+    try:
+        d = json.loads(fetch(f"https://api.github.com/repos/{repo}", 1_000_000,
+                             {"Accept": "application/vnd.github+json",
+                              **({"Authorization": f"Bearer {token}"} if token else {})}))
+    except (OSError, ValueError):
+        return None
+    n = d.get("stargazers_count") if isinstance(d, dict) else None
+    return n if type(n) is int and n >= 0 else None
+
+
 def alignment(repo: str, commit: str) -> dict | None:
     """The repository's formalization.yaml at the commit, parsed, or None."""
     import yaml

@@ -68,7 +68,7 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[4])
 import build, claims, papers
 out, fixture, pdf = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
-def fetch(url, limit=100_000_000):
+def fetch(url, limit=100_000_000, headers=None):
     if url.startswith("https://audit.example/toy/"):
         return (fixture / url[len("https://audit.example/toy/"):]).read_bytes()
     if url == "https://paper.example/toy.pdf":
@@ -107,7 +107,7 @@ work = Path(tempfile.mkdtemp())
 roots = {t.V1_URL: t.write_version_fixture(work / "v1", t.V1),
          t.LATEST_URL: t.write_version_fixture(work / "latest", t.MANUSCRIPT)}
 pdf = (t.AUDIT / "data" / "papers" / "T.pdf").read_bytes()
-def fetch(url, limit=100_000_000):
+def fetch(url, limit=100_000_000, headers=None):
     for base, root in roots.items():
         if url.startswith(base) and (root / url[len(base):]).is_file():
             return (root / url[len(base):]).read_bytes()

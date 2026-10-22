@@ -66,7 +66,7 @@ def served(tmp_path, monkeypatch):
              LATEST_URL: write_version_fixture(tmp_path / "latest", MANUSCRIPT)}
     pdf = (AUDIT / "data" / "papers" / "T.pdf").read_bytes()
 
-    def fetch(url, limit=100_000_000):
+    def fetch(url, limit=100_000_000, headers=None):
         for base, root in roots.items():
             if url.startswith(base) and (root / url[len(base):]).is_file():
                 return (root / url[len(base):]).read_bytes()

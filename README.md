@@ -8,6 +8,11 @@ Paper pages load their listed projects’ audit records, with proof results, rev
 locations. Each audit carries its author and revision. Readers choose the original paper or an
 explicit audited PDF revision. `/read/?audit=<address>` opens a published audit directly.
 
+A paper version with audits from several repositories opens on the audit of the most-starred
+repository (GitHub star counts, read when the site builds; the registry's order when GitHub does
+not answer). A claim that audit does not map shows the next audit's evidence, labelled with its
+author, repository and commit. Choosing one repository shows only its audit.
+
 ## Layout
 
 | Path | What |
