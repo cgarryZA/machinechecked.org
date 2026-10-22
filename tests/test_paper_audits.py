@@ -43,7 +43,7 @@ def paper(pdf="https://paper.example/toy.pdf", audits=True):
 @pytest.fixture
 def served(monkeypatch):
     """The audit and the PDFs, served from the fixtures; anything else is offline."""
-    def fetch(url, limit=100_000_000):
+    def fetch(url, limit=100_000_000, headers=None):
         if url.startswith(AUDIT_URL):
             path = AUDIT / url[len(AUDIT_URL):]
             if path.is_file():
@@ -129,7 +129,7 @@ def test_without_a_readable_pdf_the_audit_still_lists_its_claims(tmp_path, serve
 ])
 def test_a_registered_audit_that_fails_to_load_is_not_an_absent_audit(
         tmp_path, monkeypatch, served, failure, code, level):
-    def fetch(url, limit=100_000_000):
+    def fetch(url, limit=100_000_000, headers=None):
         if url.startswith(AUDIT_URL):
             if failure:
                 raise failure
@@ -160,7 +160,7 @@ def test_an_audit_that_fails_to_load_does_not_rebuild_the_site_on_every_check(
     state = {"descriptor": json.loads((AUDIT / "audit.json").read_text())}
     state["descriptor"]["papers"][0]["id"] = "curated:another-paper"
 
-    def fetch(url, limit=100_000_000):
+    def fetch(url, limit=100_000_000, headers=None):
         if url == AUDIT_URL + "audit.json":
             return json.dumps(state["descriptor"]).encode()
         return served(url, limit)

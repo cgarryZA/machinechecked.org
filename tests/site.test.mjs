@@ -68,7 +68,7 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[4])
 import build, claims, papers
 out, fixture, pdf = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
-def fetch(url, limit=100_000_000):
+def fetch(url, limit=100_000_000, headers=None):
     if url.startswith("https://audit.example/toy/"):
         return (fixture / url[len("https://audit.example/toy/"):]).read_bytes()
     if url == "https://paper.example/toy.pdf":
@@ -107,7 +107,7 @@ work = Path(tempfile.mkdtemp())
 roots = {t.V1_URL: t.write_version_fixture(work / "v1", t.V1),
          t.LATEST_URL: t.write_version_fixture(work / "latest", t.MANUSCRIPT)}
 pdf = (t.AUDIT / "data" / "papers" / "T.pdf").read_bytes()
-def fetch(url, limit=100_000_000):
+def fetch(url, limit=100_000_000, headers=None):
     for base, root in roots.items():
         if url.startswith(base) and (root / url[len(base):]).is_file():
             return (root / url[len(base):]).read_bytes()
@@ -211,6 +211,17 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   if (width > 700) assert.deepEqual(await statuses(), expected(""));
   // Its PDF is arXiv's v1.
   if (width > 700) await pg.locator(".pdf .page canvas").first().waitFor();
+  // The panel names each audit's version and commit: this version's audit is the action, and the
+  // other version's audit links to its page (#42).
+  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  const card = pg.locator(".info .card");
+  await card.waitFor();
+  const commit = versionIndex("").audits["cgarryZA/MachineChecked"].commit.slice(0, 12);
+  assert.deepEqual((await card.locator(".audit.here .btn").allTextContents()).map((t) => t.trim()), ["Open the audit of arXiv v1"]);
+  assert.match(await card.locator(".audit.here").textContent(), new RegExp(`by A\\. Author · commit ${commit}`));
+  assert.deepEqual((await card.locator(".elsewhere a").allTextContents()).map((t) => t.trim()), ["Latest manuscript (commit 956fe0b)"]);
+  assert.equal(new URL(await card.locator(".elsewhere a").getAttribute("href")).pathname, "/papers/2601.00001/manuscript-956fe0b/");
+  if (width <= 1180) await pg.locator(".side-head .x").click();
   // Choosing the manuscript opens its page, with the chosen formalisation and without a claim.
   await Promise.all([pg.waitForURL(/manuscript-956fe0b/), select.selectOption("manuscript:956fe0b")]);
   const url = new URL(pg.url());
@@ -219,6 +230,11 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   await pg.locator("select[aria-label='Paper version shown']").waitFor();
   assert.equal(await pg.locator("select[aria-label='Paper version shown']").inputValue(), "manuscript:956fe0b");
   await pg.waitForSelector("nav.toc li", { state: "attached" });
+  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  await pg.locator(".info .card").waitFor();
+  assert.deepEqual((await pg.locator(".info .audit.here .btn").allTextContents()).map((t) => t.trim()), ["Open the audit of Latest manuscript (commit 956fe0b)"]);
+  assert.deepEqual((await pg.locator(".info .elsewhere a").allTextContents()).map((t) => t.trim()), ["arXiv v1"]);
+  if (width <= 1180) await pg.locator(".side-head .x").click();
   // Each version's page keeps its own audit's statuses.
   if (width > 700) assert.deepEqual(await statuses(), expected("manuscript-956fe0b"));
   // The manuscript is shown from the PDF its audit carries, the audit's claims at their exact
