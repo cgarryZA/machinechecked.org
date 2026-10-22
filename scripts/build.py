@@ -120,14 +120,19 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
 # page it had.
 
 def label_audits(p: dict, audits: dict) -> None:
-    """Give each registered audit of `p` the label of the version it pins, from its loaded record
-    (`claims.audits_for` keys a repository's n-th audit `<repository>@<n>`)."""
+    """Give each registered audit of `p` the version it pins (`version_id`, `version_label`) and
+    the project commit it audits, from its loaded record (`claims.audits_for` keys a repository's
+    n-th audit `<repository>@<n>`)."""
     for f in p["formalisations"]:
         for n, a in enumerate(f.get("audits", []), 1):
             got = audits.get(f["repository"] if n == 1 else f"{f['repository']}@{n}") or {}
-            pv = got.get("paper_version") if got.get("state") == "loaded" else None
+            if got.get("state") != "loaded":
+                continue
+            pv = got.get("paper_version")
             if pv and pv.get("label"):
-                a["version_label"] = pv["label"]
+                a["version_label"], a["version_id"] = pv["label"], pv["id"]
+            if re.fullmatch(r"[0-9a-f]{40}", got.get("commit") or ""):
+                a["commit"] = got["commit"]
 
 
 def pinned_versions(audits: dict) -> dict:
@@ -225,7 +230,8 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
                       "found": own if v["kind"] == "manuscript" else by_version.get(vid)}
     entries = [{"id": vid, "kind": v["kind"], "revision": v.get("revision"),
                 "href": pages[vid]["here"], "pdf": pages[vid]["pdf"],
-                "audits": [{"url": a["url"], "author": a.get("author"), "repository": r}
+                "audits": [{"url": a["url"], "author": a.get("author"), "repository": r,
+                            "commit": a.get("commit")}
                            for r, a in pages[vid]["audits"].items() if a.get("state") == "loaded"]}
                for vid, v in versions.items()]
     # The plain address first: writing a page replaces its directory, and the versions' pages
@@ -242,7 +248,7 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
         write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries)
         if vid == default and where == order[0][1]:
             p["formalisations"] = q["formalisations"]
-    return [{"label": v["label"], "href": pages[vid]["here"], "slug": version_slug(v),
+    return [{"id": vid, "label": v["label"], "href": pages[vid]["here"], "slug": version_slug(v),
              "default": vid == default} for vid, v in versions.items()]
 
 

@@ -145,9 +145,24 @@ def test_the_static_pages_link_every_version(tmp_path, monkeypatch, served):
             "Latest manuscript (commit 956fe0b)</a>") in latest
     assert '<link rel="canonical" href="https://machinechecked.org/papers/2601.00001/' \
         'manuscript-956fe0b/">' in latest
-    # Each audit is listed with the version it pins.
-    assert "(arXiv v1)</span> by A. Author" in plain
-    assert "(Latest manuscript (commit 956fe0b))</span> by A. Author" in plain
+    # Each audit names the version it pins and its commit; on a version's page, the audit of that
+    # version is the action, and the other version's audit links to its page (#42).
+    commit = index(d)["audits"][REPO]["commit"][:12]
+    v1_button = (f'<a class="btn primary" href="/read/?audit=https%3A%2F%2Faudit.example%2Fv1%2F">'
+                 f'Open the audit of arXiv v1</a> by A. Author · commit <code>{commit}</code>')
+    latest_button = ('<a class="btn primary" href="/read/?audit=https%3A%2F%2Faudit.example%2F'
+                     'latest%2F">Open the audit of Latest manuscript (commit 956fe0b)</a> by A. '
+                     f'Author · commit <code>{commit}</code>')
+    for page in (plain, (d / "v1" / "index.html").read_text()):
+        assert v1_button in page and "Open the audit of Latest" not in page
+        assert ('<li><a href="/papers/2601.00001/manuscript-956fe0b/">Latest manuscript (commit '
+                f'956fe0b)</a> · by A. Author · commit <code>{commit}</code></li>') in page
+    assert latest_button in latest and "Open the audit of arXiv v1" not in latest
+    assert (f'<li><a href="/papers/2601.00001/v1/">arXiv v1</a> · by A. Author · commit '
+            f'<code>{commit}</code></li>') in latest
+    # The reader gets each version's audits with their commits.
+    for v in index(d)["versions"]:
+        assert [a.get("commit") for a in v["audits"]] == [index(d)["audits"][REPO]["commit"]]
     sitemap = (tmp_path / "out" / "sitemap.xml").read_text()
     for page in ("", "v1/", "manuscript-956fe0b/"):
         assert f"<loc>https://machinechecked.org/papers/2601.00001/{page}</loc>" in sitemap

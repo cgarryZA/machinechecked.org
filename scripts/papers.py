@@ -186,7 +186,20 @@ def report_url(paper: dict, f: dict) -> str:
             + quote(title) + "&body=" + quote(body))
 
 
-def formalisation(f: dict, paper: dict) -> str:
+def audit_line(a: dict, primary: bool) -> str:
+    """One audit of a listing: a button (or a link) opening it in the reader, naming the version
+    it pins, its author and the project commit it audits."""
+    label = f" of {e(a['version_label'])}" if a.get("version_label") else ""
+    commit = f' · commit <code>{e(a["commit"][:12])}</code>' if a.get("commit") else ""
+    note = f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else ""
+    cls = "btn primary" if primary else "btn"
+    return (f'<li><a class="{cls}" href="{e(reader_url(a["url"]))}">Open the audit{label}</a> '
+            f'by {e(a["author"])}{commit}{note}</li>')
+
+
+def formalisation(f: dict, paper: dict, here: str | None = None) -> str:
+    """A listing's card. On the page of one version of the paper (`here`, its identifier) the
+    audit of that version is the action; audits of other versions link to their versions' pages."""
     repo, commit = f["repository"], f["commit"]
     url = f"https://github.com/{repo}/tree/{commit}"
     parts = [f'<div class="card"><h3><a href="{e(url)}">{e(repo)}</a> '
@@ -198,17 +211,22 @@ def formalisation(f: dict, paper: dict) -> str:
     if f.get("audit_state", {}).get("state") in ("unavailable", "incompatible"):
         parts.append(f'<p class="small muted">Audit {e(f["audit_state"]["state"])}: {e(f["audit_state"].get("detail", ""))}</p>')
     audits = f.get("audits") or []
-    if audits:
+    pages = {v["id"]: v for v in paper.get("versions_shown") or []}
+    elsewhere = [a for a in audits if here and a.get("version_id") in pages
+                 and a["version_id"] != here]
+    shown = [a for a in audits if a not in elsewhere]
+    if shown:
         parts.append("<ul class=\"audits\">")
-        for a in audits:
-            label = f' <span class="small muted">({e(a["version_label"])})</span>' \
-                if a.get("version_label") else ""
-            parts.append(f'<li><a class="btn primary" href="{e(reader_url(a["url"]))}">Open the audit</a>'
-                         f'{label} by {e(a["author"])}'
-                         + (f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else "")
-                         + "</li>")
+        parts += [audit_line(a, not here or a.get("version_id") == here) for a in shown]
         parts.append("</ul>")
-    else:
+    if elsewhere:
+        parts.append('<p class="small muted">Audits of other versions:</p><ul class="audits">')
+        for a in elsewhere:
+            commit = f' · commit <code>{e(a["commit"][:12])}</code>' if a.get("commit") else ""
+            parts.append(f'<li><a href="{e(pages[a["version_id"]]["href"])}">'
+                         f'{e(pages[a["version_id"]]["label"])}</a> · by {e(a["author"])}{commit}</li>')
+        parts.append("</ul>")
+    if not audits:
         parts.append('<p class="small muted">Audit: awaiting publication.</p>')
     parts.append(f'<p class="small"><a href="{e(report_url(paper, f))}">Report this listing</a></p>')
     parts.append("</div>")
@@ -255,7 +273,10 @@ def paper_page(paper: dict, reader: str | None = None, version: dict | None = No
     body.append(f"    <h2>Lean formalisations ({len(fs)})</h2>")
     if len(fs) > 1:
         body.append('    <p class="small muted">Choose a formalisation to inspect its evidence.</p>')
-    body += [formalisation(f, paper) for f in fs] or ['    <p class="muted">None listed.</p>']
+    shown_version = version or next((v for v in paper.get("versions_shown") or [] if v["default"]),
+                                    None)
+    here_id = shown_version["id"] if shown_version else None
+    body += [formalisation(f, paper, here_id) for f in fs] or ['    <p class="muted">None listed.</p>']
     if paper.get("related"):
         body.append("    <h2>Related</h2><ul>")
         for r in paper["related"]:
