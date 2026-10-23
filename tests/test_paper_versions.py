@@ -288,6 +288,28 @@ def test_the_claim_inventory_reads_labels_and_statements_its_records_agree_on():
         {"key": "remark-3", "number": "Remark 3"}]
 
 
+def test_a_statement_that_only_gains_or_loses_a_label_is_the_same_text():
+    """MachineChecked #315: removing a `\\label` leaves no space of its own (except between a
+    control word and a letter, which it keeps apart), so a statement that only gains, loses or
+    renames a label is the same text, and its claim the same claim in the map."""
+    eq = r"\begin{equation}x = y\end{equation}"
+    assert build.unlabelled(r"\begin{equation}\label{eq:a}x = y\end{equation}") == eq
+    assert build.unlabelled(eq) == eq
+    assert build.unlabelled("\\begin{equation}\n  \\label{eq:b}\n  x") == r"\begin{equation} x"
+    assert build.unlabelled(r"\item\label{it:a}Each $n$.") == r"\item Each $n$."
+    assert build.unlabelled(r"a\label{x}b") == "ab" and build.unlabelled(r"a \label{x} b") == "a b"
+    [m] = build.version_claim_maps(
+        {"arxiv:2601.00001v1": {"kind": "published", "number": "v1"},
+         "arxiv:2601.00001v2": {"kind": "published", "number": "v2"}},
+        {"arxiv:2601.00001v1": [record("e5", "(5)", "eq:a",
+                                       r"\begin{equation}\label{eq:a}x = y\end{equation}"),
+                                record("i1", "(i)", "it:a", r"\item\label{it:a}Each $n$.")],
+         "arxiv:2601.00001v2": [record("E5", "(5)", None, eq),
+                                record("I1", "(i)", None, r"\item Each $n$.")]})
+    assert [([r["key"] for r in e["from"]], e["change"], [r["key"] for r in e["to"]])
+            for e in m["claims"]] == [(["e5"], "same", ["E5"]), (["i1"], "same", ["I1"])]
+
+
 def test_only_removals_and_additions_the_site_can_be_sure_of_are_shown():
     earlier = [record("t1", "Theorem 1", "thm:a", "A holds."),
                record("l2", "Lemma 2", "lem:b", "B holds."),
