@@ -319,8 +319,8 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
     """The pages of a paper whose audits pin several versions: the default version's at the
     paper's plain address and at its own, and every other version's at its own, each with the
     claim maps between the versions (`version_claim_maps`), so that a claim links to what it
-    became in another version. Returns the versions as the static pages list them (`label`,
-    `href`, `current` for the default)."""
+    became in another version. Returns the versions as the static pages list them (`id`,
+    `label`, `href`, `slug`, and `default`, true for the default version)."""
     import copy
     import papers
     versions = pinned_versions(audits)
