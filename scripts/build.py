@@ -249,20 +249,36 @@ def related_versions(versions: dict) -> list[tuple[str, str]]:
 LABEL = re.compile(r"\\label\s*\{[^{}]*\}")
 
 
+def unlabelled(text: str) -> str:
+    """A statement text without its `\\label` commands, which are not printed, and then with its
+    white space collapsed, as MachineChecked's `claim_map` compares it: a statement that only
+    gains, loses or renames a label is the same text. A label leaves nothing, or a space when it
+    stands between a control word and a letter (`\\item\\label{a}Each`), which it keeps apart."""
+    def drop(m: re.Match) -> str:
+        s, i = m.string, m.start()
+        k = i
+        while k > 0 and s[k - 1].isascii() and s[k - 1].isalpha():
+            k -= 1
+        after = s[m.end():m.end() + 1]
+        return " " if 0 < k < i and s[k - 1] == "\\" and after.isascii() and after.isalpha() \
+            else ""
+    return " ".join(LABEL.sub(drop, text).split())
+
+
 def claim_inventory(records: list[dict]) -> list[dict]:
     """A page's claims as `claim_map` compares them: each claim's `key` and `number`, and its
-    source label (`label`, such as its LaTeX label) and statement text (`statement`, without the
-    `\\label` commands, which are not printed), read from its audits' records when every record
-    on the claim gives the same one. A claim without a printed number is left out (a map names
-    claims by number)."""
+    source label (`label`, such as its LaTeX label) and statement text (`statement`, as
+    `unlabelled` gives it), read from its audits' records when every record on the claim gives
+    the same one. A claim without a printed number is left out (a map names claims by
+    number)."""
     out = []
     for c in records:
         if not isinstance(c.get("number"), str) or not c["number"]:
             continue
         recs = [a["record"] for a in (c.get("audit") or {}).values() if a.get("record")]
         labels = {(r.get("anchor") or {}).get("label") for r in recs}
-        texts = {" ".join(LABEL.sub(" ", r["statement_tex"]).split())
-                 if isinstance(r.get("statement_tex"), str) else None for r in recs}
+        texts = {unlabelled(r["statement_tex"]) if isinstance(r.get("statement_tex"), str)
+                 else None for r in recs}
         label = labels.pop() if len(labels) == 1 else None
         text = texts.pop() if len(texts) == 1 else None
         out.append({"key": c["key"], "number": c["number"],
