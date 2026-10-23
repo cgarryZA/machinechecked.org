@@ -310,6 +310,16 @@ def test_a_statement_that_only_gains_or_loses_a_label_is_the_same_text():
             for e in m["claims"]] == [(["e5"], "same", ["E5"]), (["i1"], "same", ["I1"])]
 
 
+def engine_pairs_by_number() -> bool:
+    """Whether the installed MachineChecked's `claim_map` pairs the one unmatched claim of each
+    version under the same number (MachineChecked #296, released after 0.1.21), read from its
+    map of two unlabelled claims numbered (1) with different statements."""
+    from prooflens.paper import claim_map
+    m = claim_map("arxiv:2601.00001v1", [{"key": "a", "number": "(1)", "statement": "x = y"}],
+                  "arxiv:2601.00001v2", [{"key": "b", "number": "(1)", "statement": "x = z"}])
+    return [e["change"] for e in m["claims"]] == ["changed"]
+
+
 def test_only_removals_and_additions_the_site_can_be_sure_of_are_shown():
     earlier = [record("t1", "Theorem 1", "thm:a", "A holds."),
                record("l2", "Lemma 2", "lem:b", "B holds."),
@@ -331,15 +341,46 @@ def test_only_removals_and_additions_the_site_can_be_sure_of_are_shown():
          "manuscript:abcdef1": {"kind": "manuscript"}},
         {"arxiv:2601.00001v1": earlier, "manuscript:abcdef1": later})
     assert (m["from"], m["to"]) == ("arxiv:2601.00001v1", "manuscript:abcdef1")
-    assert sorted(([r["key"] for r in e["from"]], e["change"], [r["key"] for r in e["to"]])
-                  for e in m["claims"]) == sorted([
+    expected = [
         (["t1"], "changed", ["T1"]),       # one label, another statement
         (["l7"], "same", ["L7"]),          # another label, the same statement
         (["l2"], "removed", []),           # its label and statement are in no later claim
-        ([], "new", ["C6"])])              # its label and statement are in no earlier claim
-    # Not said to be removed or new: an edited statement without a label ((3)), one that gained
-    # a label (Remark 4), one whose later claim has no statement text (Proposition 5), and one
-    # whose label the other version gives to two claims (Lemma 8, Lemmas 9 and 10).
+        ([], "new", ["C6"])]               # its label and statement are in no earlier claim
+    # An engine that pairs the one unmatched claim of each version under a number relates an
+    # edited statement without a label ((3)) and one that gained a label (Remark 4) as changed;
+    # one that does not (0.1.21) leaves them unrelated. Neither engine's map, as the site shows
+    # it, says they are removed or new.
+    if engine_pairs_by_number():
+        expected += [(["e3"], "changed", ["E3"]), (["r4"], "changed", ["R4"])]
+    assert sorted(([r["key"] for r in e["from"]], e["change"], [r["key"] for r in e["to"]])
+                  for e in m["claims"]) == sorted(expected)
+    # Not related at all: a claim whose later claim has no statement text (Proposition 5), and
+    # one whose label the other version gives to two claims (Lemma 8, Lemmas 9 and 10).
+
+
+def test_the_site_drops_removals_and_additions_a_map_cannot_be_sure_of():
+    """`settled` on a map that calls every unmatched claim removed or new, as MachineChecked
+    0.1.21's `claim_map` does, so the site's own filter is checked whatever engine is
+    installed."""
+    def ref(c):
+        return {"key": c["key"], "number": c["number"]}
+    earlier = build.claim_inventory([record("l2", "Lemma 2", "lem:b", "B holds."),
+                                     record("e3", "(3)", None, "x = y"),
+                                     record("r4", "Remark 4", None, "R holds."),
+                                     record("p5", "Proposition 5", "prop:e", "E holds."),
+                                     record("l8", "Lemma 8", "lem:k", "K holds.")])
+    later = build.claim_inventory([record("E3", "(3)", None, "x = y + 0"),
+                                   record("R4", "Remark 4", "rem:d", "R holds, as noted."),
+                                   record("P5", "Proposition 5", "prop:e", None),
+                                   record("C6", "Corollary 6", "cor:f", "F holds."),
+                                   record("L9", "Lemma 9", "lem:k", "K holds for $n$."),
+                                   record("L10", "Lemma 10", "lem:k", "K holds for $m$.")])
+    unsure = {"from": "arxiv:2601.00001v1", "to": "manuscript:abcdef1", "claims":
+              [{"from": [ref(c)], "to": [], "change": "removed"} for c in earlier] +
+              [{"from": [], "to": [ref(c)], "change": "new"} for c in later]}
+    assert [([r["key"] for r in e["from"]], e["change"], [r["key"] for r in e["to"]])
+            for e in build.settled(unsure, earlier, later)["claims"]] == [
+        (["l2"], "removed", []), ([], "new", ["C6"])]
 
 
 def test_versions_are_ordered_and_named():
