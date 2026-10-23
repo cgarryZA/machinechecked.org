@@ -24,6 +24,14 @@ def test_a_package_without_what_the_site_uses_stops_the_build(monkeypatch):
     assert "TOOL_VERSION pins" in str(e.value)
 
 
+def test_a_package_whose_page_writer_lacks_an_argument_the_site_passes_stops_the_build(
+        monkeypatch):
+    assert {"stars", "claim_maps"} <= set(build.REQUIRED_PARAMETERS)
+    monkeypatch.setattr(build, "REQUIRED_PARAMETERS", (*build.REQUIRED_PARAMETERS, "gone"))
+    with pytest.raises(SystemExit, match=r"write_paper_site\(gone=…\)"):
+        build.require_package()
+
+
 def test_the_installed_package_must_be_the_pinned_release(monkeypatch):
     have = version("machinechecked")
     assert build.require_package() == have

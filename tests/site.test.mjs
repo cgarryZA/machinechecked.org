@@ -5,8 +5,8 @@
 // browser binary if Playwright has none.
 //
 // Cases: a paper with two formalisations (the selector, and one project's links at a time), a
-// paper whose audits pin two versions (a page per version, and the drop-down between them), a
-// paper with no audit, a paper page with a published audit (a synthetic export of the toy paper,
+// paper whose audits pin two versions (a page per version, the drop-down between them, and each
+// claim's link to what it became in the other version), a paper with no audit, a paper page with a published audit (a synthetic export of the toy paper,
 // tests/fixtures/paper-audit/, joined by the site's own build code), and audits opened in the
 // reader from their data: the toy audit as this version exports it is the demo's; an export
 // frozen from an older version (tests/fixtures/) must keep opening.
@@ -90,10 +90,10 @@ papers.write(out, [p], Path(sys.argv[5]).read_text(encoding="utf-8"))
 if (built.status !== 0) throw new Error(built.stderr);
 const toyIndex = JSON.parse(fs.readFileSync(path.join(audited_site, "papers", "toy-paper", "data", "index.json")));
 
-// A paper whose two audits pin different versions (arXiv v1 and the latest manuscript), built by
-// the site's own code from the synthetic audit fixture made to pin each (tests/
-// test_paper_versions.py), and served at the root of its own origin: version pages are addressed
-// from the site's root.
+// A paper whose two audits pin different versions (arXiv v1 and the latest manuscript, which
+// changes one statement and replaces a remark), built by the site's own code from the synthetic
+// audit fixture made to pin each (tests/test_paper_versions.py), and served at the root of its
+// own origin: version pages are addressed from the site's root.
 const versioned_site = fs.mkdtempSync(path.join(os.tmpdir(), "mc-site-versions-"));
 const versionedBuild = spawnSync(process.env.PYTHON || "python3", ["-c", `
 import sys, tempfile
@@ -105,7 +105,7 @@ from test_snapshot import registry
 out, reader = Path(sys.argv[1]), Path(sys.argv[4])
 work = Path(tempfile.mkdtemp())
 roots = {t.V1_URL: t.write_version_fixture(work / "v1", t.V1),
-         t.LATEST_URL: t.write_version_fixture(work / "latest", t.MANUSCRIPT)}
+         t.LATEST_URL: t.revise(t.write_version_fixture(work / "latest", t.MANUSCRIPT))}
 pdf = (t.AUDIT / "data" / "papers" / "T.pdf").read_bytes()
 def fetch(url, limit=100_000_000, headers=None):
     for base, root in roots.items():
@@ -250,6 +250,51 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   assert.equal(await pg.locator("select[aria-label='Paper version shown']").inputValue(), "manuscript:956fe0b");
   assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `versions-${width}.png`) }); }
+});
+
+for (const width of [1300, 390]) await check(`a claim links to what it became in the other version, at ${width}px`, async (pg) => {
+  await pg.setViewportSize({ width, height: 900 });
+  await pg.route("https://arxiv.org/**", (r) => r.fulfill({ path: path.join(fixtures, "paper-audit", "toy", "data", "papers", "T.pdf"), contentType: "application/pdf" }));
+  const v1 = versionIndex("v1"), latest = versionIndex("manuscript-956fe0b");
+  const side = pg.locator(".reader-layout > aside.side");
+  const open = async (dir, claim) => {
+    await pg.goto(`${versionedOrigin}/papers/2601.00001/${dir}#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
+    await side.getByText(claim.number, { exact: false }).first().waitFor();
+  };
+  const lines = async () => (await side.locator(".counterpart").allTextContents()).map((t) => t.trim());
+  // On arXiv v1, a claim whose statement the manuscript changed links to it there.
+  const theorem = v1.claims.find((c) => c.number === "Theorem 2.5");
+  await open("v1/", theorem);
+  await side.locator(".counterpart").first().waitFor();
+  assert.deepEqual(await lines(), ["Theorem 2.5 in Latest manuscript (commit 956fe0b), statement changed."]);
+  const there = theorem.counterparts[0].claims[0].id;
+  assert.ok(latest.claims.some((c) => c.id === there));
+  await Promise.all([pg.waitForURL(/manuscript-956fe0b/), side.locator(".counterpart a").click()]);
+  const url = new URL(pg.url());
+  assert.equal(url.pathname, "/papers/2601.00001/manuscript-956fe0b/");
+  assert.equal(decodeURIComponent(url.hash.split("/").pop()), there);
+  assert.equal(url.searchParams.get("project"), "cgarryZA/MachineChecked");
+  // The manuscript's page opens on that claim, which links back.
+  await pg.locator("select[aria-label='Paper version shown']").waitFor();
+  assert.equal(await pg.locator("select[aria-label='Paper version shown']").inputValue(), "manuscript:956fe0b");
+  await side.getByText("Theorem 2.5", { exact: false }).first().waitFor();
+  await side.locator(".counterpart").first().waitFor();
+  assert.deepEqual(await lines(), ["Theorem 2.5 in arXiv v1, statement changed."]);
+  assert.equal(new URL(await side.locator(".counterpart a").getAttribute("href")).pathname, "/papers/2601.00001/v1/");
+  // An unchanged claim says so; a claim the manuscript no longer has, and one it adds, say so
+  // without a link.
+  await open("v1/", v1.claims.find((c) => c.number === "Definition 1.1"));
+  await side.locator(".counterpart").first().waitFor();
+  assert.deepEqual(await lines(), ["Definition 1.1 in Latest manuscript (commit 956fe0b), same statement."]);
+  await open("v1/", v1.claims.find((c) => c.number === "Remark 3.1"));
+  await side.locator(".counterpart").first().waitFor();
+  assert.deepEqual(await lines(), ["Removed in Latest manuscript (commit 956fe0b)."]);
+  assert.equal(await side.locator(".counterpart a").count(), 0);
+  await open("manuscript-956fe0b/", latest.claims.find((c) => c.number === "Remark 3.2"));
+  await side.locator(".counterpart").first().waitFor();
+  assert.deepEqual(await lines(), ["New in this version: not in arXiv v1."]);
+  assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `counterparts-${width}.png`) }); }
 });
 
 const plain = pages.find((p) => !audited(p) && p.index.claims.length);

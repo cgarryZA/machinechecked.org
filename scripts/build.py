@@ -27,10 +27,12 @@ ORIGIN = "https://machinechecked.org"
 # What the site uses of the MachineChecked package. A release without one of these cannot build
 # the site: the build stops and names what is missing instead of publishing pages without it.
 REQUIRED_API = {
-    "prooflens.paper": ("paper_claims", "apply_audits", "write_paper_site"),
+    "prooflens.paper": ("paper_claims", "apply_audits", "write_paper_site", "claim_map"),
     "prooflens.published": ("load_published_audit", "audit_version"),
     "prooflens.pdfclaims": ("claims_from_pdf",),
 }
+# Keyword arguments of `write_paper_site` the site passes.
+REQUIRED_PARAMETERS = ("stars", "claim_maps")
 
 
 def pinned() -> str:
@@ -58,8 +60,9 @@ def require_package(exact: bool = False) -> str:
     if "prooflens.paper.write_paper_site" not in missing and "prooflens.paper" not in missing:
         import inspect
         from prooflens.paper import write_paper_site
-        if "stars" not in inspect.signature(write_paper_site).parameters:
-            missing.append("prooflens.paper.write_paper_site(stars=…)")
+        given = inspect.signature(write_paper_site).parameters
+        missing += [f"prooflens.paper.write_paper_site({k}=…)" for k in REQUIRED_PARAMETERS
+                    if k not in given]
     if missing:
         sys.exit(f"machinechecked {have} lacks what the site uses: {', '.join(missing)}; "
                  f"TOOL_VERSION pins {pinned()}")
@@ -90,22 +93,31 @@ def pages(out: Path) -> list[str]:
     return urls
 
 
+def page_claims(found: dict | None, audits: dict) -> list[dict]:
+    """The claims a page lists: the statements found in its PDF (`claims.claims_for`) joined with
+    its loaded audits (by repository) by MachineChecked, then the audits' entries that no
+    statement found in the PDF carries."""
+    from prooflens.paper import apply_audits
+    found = found if found and "claims" in found else None
+    return apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
+                        found.get("pdf_sha256") if found else None)
+
+
 def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Path | None = None,
                 pdf: str | None = None, version: str | None = None,
-                versions: list[dict] | None = None, stars: dict | None = None) -> dict:
+                versions: list[dict] | None = None, stars: dict | None = None,
+                claim_maps: list[dict] | None = None) -> dict:
     """One paper page's data under `<page>/data/` (the page is `out/papers/<slug>/`, or `where`),
-    in the reader's format: the statements found in its PDF (`claims.claims_for`) joined with its
-    loaded audits (by repository) by MachineChecked. A page of one version of the paper shows that
-    version's PDF (`pdf`, or none), and gets its `version` and every version's entry (`versions`).
-    `stars` (repository: GitHub star count, or None) orders the page's audits: the reader opens on
-    the most-starred, and keeps the registry's order when a count is missing. Returns the page's
-    index."""
+    in the reader's format: its claims (`page_claims`). A page of one version of the paper shows
+    that version's PDF (`pdf`, or none), and gets its `version`, every version's entry
+    (`versions`) and the claim maps between the versions (`claim_maps`). `stars` (repository:
+    GitHub star count, or None) orders the page's audits: the reader opens on the most-starred,
+    and keeps the registry's order when a count is missing. Returns the page's index."""
     import claims
     import papers
-    from prooflens.paper import write_paper_site, apply_audits
+    from prooflens.paper import write_paper_site
     found = found if found and "claims" in found else None
-    records = apply_audits([dict(c) for c in found["claims"]] if found else [], audits,
-                           found.get("pdf_sha256") if found else None)
+    records = page_claims(found, audits)
     for f in p["formalisations"]:
         if f["repository"] in audits:
             a = audits[f["repository"]]
@@ -116,16 +128,17 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
     return write_paper_site(where or out / "papers" / papers.slug(p["id"]), entry, records,
                             found and found["page_size"], pdf if version else claims.view_pdf(p),
                             audits=audits, versions=versions, version=version,
-                            stars={r: n for r, n in (stars or {}).items() if n is not None})
+                            stars={r: n for r, n in (stars or {}).items() if n is not None},
+                            claim_maps=claim_maps or None)
 
 
 # -- versions of a paper ------------------------------------------------------------------------
 #
 # The audits of a paper may pin different versions of it (arXiv v1, an unpublished manuscript at a
 # commit). Each version then has its own page, `/papers/<slug>/<version>/`, with its own PDF,
-# statements and audits, and the reader's drop-down between them; the paper's plain address
-# shows its latest published version. A paper whose audits pin at most one version keeps the one
-# page it had.
+# statements and audits, and the reader's drop-down between them; each claim links to what it
+# became in the other versions (`version_claim_maps`). The paper's plain address shows its latest
+# published version. A paper whose audits pin at most one version keeps the one page it had.
 
 def label_audits(p: dict, audits: dict) -> None:
     """Give each registered audit of `p` the version it pins (`version_id`, `version_label`) and
@@ -219,11 +232,95 @@ def version_pdf(p: dict, v: dict, audits: dict, here: str) -> tuple[str | None, 
     return None, None
 
 
+def related_versions(versions: dict) -> list[tuple[str, str]]:
+    """The pairs of a paper's versions whose claims the site relates, each (earlier, later):
+    arXiv versions in the order of their numbers, and each of them before the unpublished
+    manuscript (shown as the latest). Two manuscripts, or a published version without an arXiv
+    number, have no order the site knows, and are not related."""
+    def rank(v):
+        n = v.get("number") or ""
+        if v["kind"] == "published" and re.fullmatch(r"v[0-9]+", n):
+            return (0, int(n[1:]))
+        return (1, 0) if v["kind"] == "manuscript" else None
+    ranked = [(rank(v), vid) for vid, v in versions.items() if rank(v)]
+    return [(a, b) for ra, a in ranked for rb, b in ranked if ra < rb]
+
+
+LABEL = re.compile(r"\\label\s*\{[^{}]*\}")
+
+
+def claim_inventory(records: list[dict]) -> list[dict]:
+    """A page's claims as `claim_map` compares them: each claim's `key` and `number`, and its
+    source label (`label`, such as its LaTeX label) and statement text (`statement`, without the
+    `\\label` commands, which are not printed), read from its audits' records when every record
+    on the claim gives the same one. A claim without a printed number is left out (a map names
+    claims by number)."""
+    out = []
+    for c in records:
+        if not isinstance(c.get("number"), str) or not c["number"]:
+            continue
+        recs = [a["record"] for a in (c.get("audit") or {}).values() if a.get("record")]
+        labels = {(r.get("anchor") or {}).get("label") for r in recs}
+        texts = {" ".join(LABEL.sub(" ", r["statement_tex"]).split())
+                 if isinstance(r.get("statement_tex"), str) else None for r in recs}
+        label = labels.pop() if len(labels) == 1 else None
+        text = texts.pop() if len(texts) == 1 else None
+        out.append({"key": c["key"], "number": c["number"],
+                    **({"label": label} if isinstance(label, str) and label else {}),
+                    **({"statement": text} if text else {})})
+    return out
+
+
+def settled(m: dict, earlier: list[dict], later: list[dict]) -> dict:
+    """The claim map `m` between two versions' claims (`claim_inventory`) without the removals
+    and additions it cannot be sure of. A claim that matches none of the other version's is said
+    to be removed (or new) only when it has a label, no claim of the other version has that
+    label, and no claim there under its number is unmatched or without statement text: an
+    edited statement without a label, or one that gained a label, matches nothing either."""
+    sides = {"from": earlier, "to": later}
+    other = {"from": "to", "to": "from"}
+    label = {s: {c["key"]: c.get("label") for c in cs} for s, cs in sides.items()}
+    labels = {s: {c["label"] for c in cs if c.get("label")} for s, cs in sides.items()}
+    # Per side, the numbers under which an unmatched claim's counterpart may be.
+    unsure = {s: {c["number"] for c in cs if not c.get("statement")} |
+              {r["number"] for e in m["claims"] if not e[other[s]] for r in e[s]}
+              for s, cs in sides.items()}
+
+    def sure(e):
+        if e["change"] not in ("removed", "new"):
+            return True
+        side = "from" if e["change"] == "removed" else "to"
+        [r] = e[side]
+        mine = label[side].get(r["key"])
+        return bool(mine) and mine not in labels[other[side]] \
+            and r["number"] not in unsure[other[side]]
+    return {**m, "claims": [e for e in m["claims"] if sure(e)]}
+
+
+def version_claim_maps(versions: dict, records: dict, log=print) -> list[dict]:
+    """The claim maps between a paper's related versions (`related_versions`), computed by
+    MachineChecked (`claim_map`) from each version page's claims (`records`, by version id; see
+    `claim_inventory`), without the removals and additions they cannot be sure of (`settled`).
+    A map only says what a claim became in the other version; it changes no status. A pair
+    whose map MachineChecked refuses is left unrelated, and the build says so."""
+    from prooflens.paper import claim_map
+    maps = []
+    for a, b in related_versions(versions):
+        earlier, later = claim_inventory(records[a]), claim_inventory(records[b])
+        try:
+            maps.append(settled(claim_map(a, earlier, b, later), earlier, later))
+        except ValueError as e:
+            log(f"claims of {a} and {b} not related: {e}")
+    return maps
+
+
 def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
                    audits: dict, stars: dict | None = None) -> list[dict]:
     """The pages of a paper whose audits pin several versions: the default version's at the
-    paper's plain address and at its own, and every other version's at its own. Returns the
-    versions as the static pages list them (`label`, `href`, `current` for the default)."""
+    paper's plain address and at its own, and every other version's at its own, each with the
+    claim maps between the versions (`version_claim_maps`), so that a claim links to what it
+    became in another version. Returns the versions as the static pages list them (`label`,
+    `href`, `current` for the default)."""
     import copy
     import papers
     versions = pinned_versions(audits)
@@ -242,6 +339,8 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
                             "commit": a.get("commit")}
                            for r, a in pages[vid]["audits"].items() if a.get("state") == "loaded"]}
                for vid, v in versions.items()]
+    maps = version_claim_maps(versions, {vid: page_claims(page["found"], page["audits"])
+                                         for vid, page in pages.items()})
     # The plain address first: writing a page replaces its directory, and the versions' pages
     # are inside it.
     order = [(default, out / "papers" / papers.slug(p["id"]))] + \
@@ -253,7 +352,7 @@ def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
         pdf = page["pdf"]
         if where.name != version_slug(versions[vid]) and pdf and pdf.startswith(page["here"]):
             pdf = base + pdf[len(page["here"]):]
-        write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries, stars)
+        write_paper(out, q, page["found"], page["audits"], where, pdf, vid, entries, stars, maps)
         if vid == default and where == order[0][1]:
             p["formalisations"] = q["formalisations"]
     return [{"id": vid, "label": v["label"], "href": pages[vid]["here"], "slug": version_slug(v),
