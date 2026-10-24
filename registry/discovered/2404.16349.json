@@ -1,0 +1,28 @@
+{
+ "id": "arxiv:2404.16349",
+ "title": "More Asymmetry Yields Faster Matrix Multiplication",
+ "authors": [
+  "Josh Alman",
+  "Ran Duan",
+  "Virginia Vassilevska Williams",
+  "Yinzhan Xu",
+  "Zixuan Xu",
+  "Renfei Zhou"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2404.16349"
+ },
+ "formalisations": [
+  {
+   "repository": "jzuiddam/matrix-mult-exponent",
+   "commit": "f8478f7b8706db8f176e3cc1954003af9c4113f0",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed, author-reviewed"
+  }
+ ]
+}

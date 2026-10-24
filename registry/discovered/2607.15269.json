@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2607.15269",
+ "title": "Dense sets without large sumsets",
+ "authors": [
+  "Gabriel Dahia",
+  "João Pedro Marciano",
+  "Victor Souza"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2607.15269"
+ },
+ "formalisations": [
+  {
+   "repository": "gdahia/DenseSetsWithoutLargeSumsets",
+   "commit": "59401cac84301051b720a049b77be9516000d52c",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "unchecked"
+  }
+ ]
+}

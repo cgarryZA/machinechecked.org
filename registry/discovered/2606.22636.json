@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2606.22636",
+ "title": "Spectral Gap for the Binary Fixed-Margin Swap Chain",
+ "authors": [
+  "Weibo Fu",
+  "Qian Qin",
+  "Guanyang Wang"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2606.22636"
+ },
+ "formalisations": [
+  {
+   "repository": "guanyangwang/ktv-swap-lean-comparator",
+   "commit": "fd4dc985900b1fba59791067dcf3bf9341a94bda",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "comparator-passed"
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+ "id": "arxiv:2512.07087",
+ "title": "The Equational Theories Project: Advancing Collaborative Mathematical Research at Scale",
+ "authors": [
+  "Matthew Bolan",
+  "Joachim Breitner",
+  "Jose Brox",
+  "Nicholas Carlini",
+  "Mario Carneiro",
+  "Floris van Doorn",
+  "Martin Dvorak",
+  "Andrés Goens",
+  "Aaron Hill",
+  "Harald Husum",
+  "Hernán Ibarra Mejia",
+  "Zoltan A. Kocsis",
+  "Bruno Le Floch",
+  "Amir Livne Bar-on",
+  "Lorenzo Luccioli",
+  "Douglas McNeil",
+  "Alex Meiburg",
+  "Pietro Monticone",
+  "Pace P. Nielsen",
+  "Emmanuel Osalotioman Osazuwa",
+  "Giovanni Paolini",
+  "Marco Petracci",
+  "Bernhard Reinke",
+  "David Renshaw",
+  "Marcus Rossel",
+  "Cody Roux",
+  "Jérémy Scanvic",
+  "Shreyas Srinivas",
+  "Anand Rao Tadipatri",
+  "Terence Tao",
+  "Vlad Tsyrklevich",
+  "Fernando Vaquerizo-Villar",
+  "Daniel Weber",
+  "Fan Zheng"
+ ],
+ "year": 2025,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2512.07087"
+ },
+ "formalisations": [
+  {
+   "repository": "dcposch/austin-pair-lean",
+   "commit": "5bb5d8af635807a1087f2b5c5426fb9eb74f30cc",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1802.04034",
+ "title": "Lipschitz-Margin Training: Scalable Certification of Perturbation Invariance for Deep Neural Networks",
+ "authors": [
+  "Yusuke Tsuzuku",
+  "Issei Sato",
+  "Masashi Sugiyama"
+ ],
+ "year": 2018,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1802.04034"
+ },
+ "formalisations": [
+  {
+   "repository": "AIQ-Kitware/aiq-veristressgt-formalization",
+   "commit": "9cee3d9ebfcb42e9a7d7220683eb4969a2b3b31b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

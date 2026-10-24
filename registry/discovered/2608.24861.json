@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2608.24861",
+ "title": "A Vertex-Localized Positive Square-Energy Strengthening of Turán's Theorem",
+ "authors": [
+  "Abhay Jayarajan",
+  "M. Rajesh Kannan",
+  "Shivaramakrishna Pragada",
+  "Rahul Roy"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.24861"
+ },
+ "formalisations": [
+  {
+   "repository": "mattppal/sqomega-equality",
+   "commit": "2386c715e88adef6c53b1b87c72bfb4be5d2a596",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

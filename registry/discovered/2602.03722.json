@@ -1,0 +1,27 @@
+{
+ "id": "arxiv:2602.03722",
+ "title": "Parity of $k$-differentials in genus zero and one",
+ "authors": [
+  "Dawei Chen",
+  "Evan Chen",
+  "Kenny Lau",
+  "Ken Ono",
+  "Jujian Zhang"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2602.03722"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/parity-differential",
+   "commit": "2b7f353175cfded199801b845041b663ff67bad1",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

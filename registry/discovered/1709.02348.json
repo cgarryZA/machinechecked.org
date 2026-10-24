@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:1709.02348",
+ "title": "Ping-pong configurations and circular orders on free groups",
+ "authors": [
+  "Dominique Malicet",
+  "Kathryn Mann",
+  "Cristobal Rivas",
+  "Michele Triestino"
+ ],
+ "year": 2017,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1709.02348"
+ },
+ "formalisations": [
+  {
+   "repository": "homeowmorphism/finitely-generated-positive-cones-in-fnz",
+   "commit": "20bfd7cb2abb773f2426af11cd0217b415f7497b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

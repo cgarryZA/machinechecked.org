@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2609.26771",
+ "title": "The Odlyzko-Poonen Conjecture on Irreducibility of Random Polynomials",
+ "authors": [
+  "Constantin Kogler"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.26771"
+ },
+ "formalisations": [
+  {
+   "repository": "ckkogler/odlyzko-poonen-lean",
+   "commit": "e79540e23d591907eed55268f1ada10340d1de69",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

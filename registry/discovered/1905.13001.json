@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:1905.13001",
+ "title": "Formal language convexity in left-orderable groups",
+ "authors": [
+  "Hang Lu Su"
+ ],
+ "year": 2019,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1905.13001"
+ },
+ "formalisations": [
+  {
+   "repository": "homeowmorphism/finitely-generated-positive-cones-in-fnz",
+   "commit": "20bfd7cb2abb773f2426af11cd0217b415f7497b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

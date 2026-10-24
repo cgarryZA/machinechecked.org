@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2502.03415",
+ "title": "Cycles on abelian 2n-folds of Weil type from secant sheaves on abelian n-folds",
+ "authors": [
+  "Eyal Markman"
+ ],
+ "year": 2025,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2502.03415"
+ },
+ "formalisations": [
+  {
+   "repository": "vltanh/lean4-markman25-hodge-abelian-fourfolds",
+   "commit": "69fb0420b553a5ea7dbad45ebfa6b491428a8ca2",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

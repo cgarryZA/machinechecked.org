@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1711.07356",
+ "title": "Evaluating Robustness of Neural Networks with Mixed Integer Programming",
+ "authors": [
+  "Vincent Tjeng",
+  "Kai Xiao",
+  "Russ Tedrake"
+ ],
+ "year": 2017,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1711.07356"
+ },
+ "formalisations": [
+  {
+   "repository": "AIQ-Kitware/aiq-veristressgt-formalization",
+   "commit": "9cee3d9ebfcb42e9a7d7220683eb4969a2b3b31b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

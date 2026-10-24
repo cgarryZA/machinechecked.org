@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2605.17153",
+ "title": "Stress-Testing Neural Network Verifiers with Provably Robust Instances",
+ "authors": [
+  "David Troxell",
+  "Yulia Alexandr",
+  "Sofia Hunt",
+  "Stephanie Lei",
+  "Guido Montúfar"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2605.17153"
+ },
+ "formalisations": [
+  {
+   "repository": "AIQ-Kitware/aiq-veristressgt-formalization",
+   "commit": "9cee3d9ebfcb42e9a7d7220683eb4969a2b3b31b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}
