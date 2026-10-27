@@ -24,6 +24,10 @@ h3 { font-size: 17px; margin: 0 0 6px; overflow-wrap: anywhere; }
 .btn.primary { background: var(--accent); color: var(--on-accent); }
 ul.audits { list-style: none; padding: 0; margin: 10px 0; }
 ul.audits li { margin: 6px 0; }
+.semantic { margin: 8px 0 4px; padding-left: 12px; border-left: 2px solid var(--border); overflow-wrap: anywhere; }
+.semantic p { margin: 4px 0; }
+.semantic ul { margin: 4px 0; padding-left: 18px; }
+.semantic li { margin: 4px 0; }
 ul.papers { list-style: none; padding: 0; }
 ul.papers li { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .pill { display: inline-block; margin-left: 8px; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); white-space: normal; }

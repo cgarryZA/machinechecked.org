@@ -9,7 +9,8 @@ repository. It writes them to a directory:
     snapshot.json     the registry as shown (followed listings at their resolved commits), each
                       paper's statements or why its PDF was not read (and, for a paper whose
                       audits pin several arXiv versions, each version's), each audit as loaded or
-                      why it was not, what the follow check compares (`follow.json`), and the
+                      why it was not (a loaded one with its semantic summary, `summary.read`, when
+                      it exports one), what the follow check compares (`follow.json`), and the
                       GitHub star count of each repository with an audit (`stars`, None when
                       GitHub did not answer), which orders a paper's audits
     pdfs/<edition>    the audited PDFs the audits carry

@@ -1,0 +1,33 @@
+{
+ "author": "B. Auditor",
+ "created": "2026-10-27T02:36:24+00:00",
+ "data": "data/index.json",
+ "formalisation": {
+  "commit": "90ea7ef623b061df74e1779256acfe3fb0fd84b0",
+  "repository": "example/even-sums",
+  "repository_private": false,
+  "toolchain": "leanprover/lean4:v4.32.0"
+ },
+ "issues": null,
+ "papers": [
+  {
+   "id": "curated:even-sums",
+   "key": "P",
+   "paper_version": {
+    "checked": true,
+    "id": "manuscript:90ea7ef",
+    "kind": "manuscript",
+    "label": "Latest manuscript (commit 90ea7ef)",
+    "revision": "90ea7ef623b061df74e1779256acfe3fb0fd84b0"
+   },
+   "revision": "90ea7ef623b061df74e1779256acfe3fb0fd84b0",
+   "title": "Sums of Even Numbers",
+   "url": null,
+   "version": null
+  }
+ ],
+ "release": "v-0d7295563bdd",
+ "schema": "machinechecked/audit@1",
+ "site_url": null,
+ "tool": "machinechecked"
+}

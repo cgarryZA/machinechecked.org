@@ -155,8 +155,10 @@ def audits_for(paper: dict, log=print) -> dict:
     `repository`, the version its listing names (`listing_version`, or None) and, when its
     descriptor was read, the publication it was read at (`publication`, see
     `follow.publication`): the first descriptor read, which is the one a loaded audit was
-    checked against."""
+    checked against. A loaded audit whose index has a semantic summary also has it (`semantic`,
+    see `summary.read`), read from the index that load checked."""
     import follow
+    import summary
     from prooflens.paper import load_published_audit
     out = {}
     for f in paper.get("formalisations", []):
@@ -169,10 +171,13 @@ def audits_for(paper: dict, log=print) -> dict:
             descriptor = a["url"].rstrip("/") + "/audit.json"
             seen = {}
 
-            def reading(url, limit, descriptor=descriptor, seen=seen):
+            def reading(url, limit, descriptor=descriptor, seen=seen, audit=a["url"]):
                 raw = fetch(url, limit)
-                if url == descriptor:
-                    seen.setdefault("descriptor", raw)
+                if url == descriptor and "descriptor" not in seen:
+                    seen["descriptor"] = raw
+                    seen["index_url"] = summary.index_url(audit, raw)
+                elif url == seen.get("index_url"):
+                    seen.setdefault("index", raw)
                 return raw
             try:
                 rec = load_published_audit(paper, project, a, reading)
@@ -180,6 +185,14 @@ def audits_for(paper: dict, log=print) -> dict:
                 state = "unavailable" if isinstance(e, OSError) else "incompatible"
                 rec = {"state": state, "detail": str(e), "url": a["url"]}
                 log(f"{paper['id']}: audit {state}: {e}")
+            # The summary never changes whether its audit loaded.
+            semantic = summary.read(seen.get("index"), rec, f["repository"],
+                                    seen.get("index_url")) if rec["state"] == "loaded" else None
+            if semantic:
+                rec["semantic"] = semantic
+                if semantic["state"] != "loaded":
+                    log(f"{paper['id']}: semantic summary {semantic['state']}: "
+                        f"{semantic['detail']}")
             try:
                 published = follow.publication(json.loads(seen["descriptor"]))
             except (KeyError, ValueError):

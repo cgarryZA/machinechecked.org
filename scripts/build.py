@@ -143,9 +143,11 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
 def label_audits(p: dict, audits: dict) -> None:
     """Give each registered audit of `p` what its load gave (`claims.audits_for` keys a
     repository's n-th audit `<repository>@<n>`): its `state`; for a loaded audit, the version
-    it pins (`version_id`, `version_label`), its `release` and the project commit it audits; for
-    one that failed to load, why (`detail`). Each audit keeps its own state, so that one that
-    failed is reported even when another audit of the same repository is the one shown."""
+    it pins (`version_id`, `version_label`), its `release`, the project commit it audits and its
+    semantic summary when it exports one (`semantic`, `summary.read`); for one that failed to
+    load, why (`detail`). Each audit keeps its own state and summary, so that one that failed is
+    reported even when another audit of the same repository is the one shown, and no audit
+    shows another's counts."""
     from papers import FAILED
     for f in p["formalisations"]:
         for n, a in enumerate(f.get("audits", []), 1):
@@ -163,6 +165,8 @@ def label_audits(p: dict, audits: dict) -> None:
                 a["release"] = got["release"]
             if re.fullmatch(r"[0-9a-f]{40}", got.get("commit") or ""):
                 a["commit"] = got["commit"]
+            if isinstance(got.get("semantic"), dict):
+                a["semantic"] = got["semantic"]
 
 
 def pinned_versions(audits: dict) -> dict:
@@ -429,7 +433,8 @@ def provenance(out: Path, ps: list[dict], package: str) -> dict:
     deployment is visible: the site's commit, the pinned and installed MachineChecked, a digest of
     the reader's files, and per paper each listing's commit, the audit release its page showed
     (`audit`) and every registered audit's state (`audits`: its address and `state`, and the
-    release and commit it was loaded at, or why it did not load)."""
+    release and commit it was loaded at, or why it did not load; and, for one that exports a
+    semantic summary, the summary's `state` and `digest`)."""
     import os
     digest = hashlib.sha256()
     for f in sorted((out / "read").rglob("*")):
@@ -439,8 +444,12 @@ def provenance(out: Path, ps: list[dict], package: str) -> dict:
             "machinechecked": package, "reader_sha256": digest.hexdigest(),
             "papers": {p["id"]: [{"repository": f["repository"], "commit": f["commit"],
                                   **({"audit": f["audit_state"]} if f.get("audit_state") else {}),
-                                  **({"audits": [{k: a[k] for k in ("url", "state", "release",
-                                                                    "commit", "detail") if k in a}
+                                  **({"audits": [{**{k: a[k] for k in ("url", "state", "release",
+                                                                      "commit", "detail") if k in a},
+                                                  **({"semantic": {k: a["semantic"][k] for k in
+                                                                   ("state", "digest")
+                                                                   if k in a["semantic"]}}
+                                                     if a.get("semantic") else {})}
                                                  for a in f["audits"]]}
                                      if f.get("audits") else {})}
                                  for f in p["formalisations"]] for p in ps}}
