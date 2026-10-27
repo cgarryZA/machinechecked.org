@@ -141,17 +141,26 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
 # published version. A paper whose audits pin at most one version keeps the one page it had.
 
 def label_audits(p: dict, audits: dict) -> None:
-    """Give each registered audit of `p` the version it pins (`version_id`, `version_label`) and
-    the project commit it audits, from its loaded record (`claims.audits_for` keys a repository's
-    n-th audit `<repository>@<n>`)."""
+    """Give each registered audit of `p` what its load gave (`claims.audits_for` keys a
+    repository's n-th audit `<repository>@<n>`): its `state`; for a loaded audit, the version
+    it pins (`version_id`, `version_label`), its `release` and the project commit it audits; for
+    one that failed to load, why (`detail`). Each audit keeps its own state, so that one that
+    failed is reported even when another audit of the same repository is the one shown."""
+    from papers import FAILED
     for f in p["formalisations"]:
         for n, a in enumerate(f.get("audits", []), 1):
             got = audits.get(f["repository"] if n == 1 else f"{f['repository']}@{n}") or {}
+            if got.get("state") in FAILED:
+                a["state"], a["detail"] = got["state"], str(got.get("detail") or "")
+                continue
             if got.get("state") != "loaded":
                 continue
+            a["state"] = "loaded"
             pv = got.get("paper_version")
             if pv and pv.get("label"):
                 a["version_label"], a["version_id"] = pv["label"], pv["id"]
+            if isinstance(got.get("release"), str) and got["release"]:
+                a["release"] = got["release"]
             if re.fullmatch(r"[0-9a-f]{40}", got.get("commit") or ""):
                 a["commit"] = got["commit"]
 
@@ -418,7 +427,9 @@ def build(out: Path, reader: Path, snapshot: Path) -> None:
 def provenance(out: Path, ps: list[dict], package: str) -> dict:
     """What this build of the site was made from, published as `/build.json` so that a stale
     deployment is visible: the site's commit, the pinned and installed MachineChecked, a digest of
-    the reader's files, and per paper each listing's commit and the audit release it showed."""
+    the reader's files, and per paper each listing's commit, the audit release its page showed
+    (`audit`) and every registered audit's state (`audits`: its address and `state`, and the
+    release and commit it was loaded at, or why it did not load)."""
     import os
     digest = hashlib.sha256()
     for f in sorted((out / "read").rglob("*")):
@@ -427,7 +438,11 @@ def provenance(out: Path, ps: list[dict], package: str) -> dict:
     return {"site_commit": os.environ.get("GITHUB_SHA"), "tool_version": pinned(),
             "machinechecked": package, "reader_sha256": digest.hexdigest(),
             "papers": {p["id"]: [{"repository": f["repository"], "commit": f["commit"],
-                                  **({"audit": f["audit_state"]} if f.get("audit_state") else {})}
+                                  **({"audit": f["audit_state"]} if f.get("audit_state") else {}),
+                                  **({"audits": [{k: a[k] for k in ("url", "state", "release",
+                                                                    "commit", "detail") if k in a}
+                                                 for a in f["audits"]]}
+                                     if f.get("audits") else {})}
                                  for f in p["formalisations"]] for p in ps}}
 
 

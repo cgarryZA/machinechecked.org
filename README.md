@@ -117,7 +117,9 @@ follow.py check (every 15 min) ── compares /follow.json with heads and audit
 All reads go through `claims.fetch` (discovery has its own client for GitHub's search API). A read
 that fails is recorded as that failure: a PDF that was not read has no statements, and an audit
 that did not load shows "Audit unavailable" or "Audit update required", never "no audit
-published". `prepare.py --offline` writes a snapshot that reads nothing.
+published". Each registered audit keeps its own state: one that did not load is reported on its
+own line, on the papers list and in `/build.json`, also when another audit of the same repository
+loaded. `prepare.py --offline` writes a snapshot that reads nothing.
 
 ## Release
 
@@ -134,14 +136,17 @@ pull request ── Site workflow: install the pin, check it (build.py --check-p
 main ── Site workflow: the same, then deploy to GitHub Pages
           /read/       the package's reader, copied unchanged
           /build.json  site commit, TOOL_VERSION, installed version, reader digest,
-                       each listing's commit and the audit release shown
+                       each listing's commit, the audit release shown, and every
+                       registered audit's state
           /follow.json followed branches' commits and audits' publications, for the follow check
 ```
 
 Every workflow installs the package the same way (`.github/actions/machinechecked`). The build
 stops, naming what is missing, if the installed package lacks what the site uses. The reader
 update proposes a release only once pip can install it. The `Follow listed branches` check rebuilds
-when a followed branch moves or an audit is republished. If the check cannot run, the workflow
+when a followed branch moves or an audit is republished: its descriptor (`audit.json`) names a
+new release, or was written again for the same release, also at an unchanged project commit
+(`follow.publication`). If the check cannot run, the workflow
 fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
 
 The landing page's screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from

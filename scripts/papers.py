@@ -155,10 +155,16 @@ def page(title: str, description: str, body: str, canonical: str, jsonld: dict |
 """
 
 
+FAILED = ("unavailable", "incompatible")
+
+
 def level(paper: dict) -> str:
-    """The furthest the site's knowledge of the paper goes, in words."""
+    """The furthest the site's knowledge of the paper goes, in words. A registered audit that
+    did not load, or that its page cannot show, needs attention, even when another audit of the
+    paper loaded."""
     fs = paper["formalisations"]
-    if any(f.get("audit_state", {}).get("state") in ("unavailable", "incompatible") for f in fs):
+    if any(f.get("audit_state", {}).get("state") in FAILED or
+           any(a.get("state") in FAILED for a in f.get("audits", [])) for f in fs):
         return "Audit needs attention"
     if any(f.get("audits") for f in fs):
         return "Audit published"
@@ -186,15 +192,23 @@ def report_url(paper: dict, f: dict) -> str:
             + quote(title) + "&body=" + quote(body))
 
 
+def failure(state: str, detail: str | None) -> str:
+    """Why a registered audit is not shown, in the words the static page uses."""
+    return f"Audit {e(state)}: {e(detail or '')}"
+
+
 def audit_line(a: dict, primary: bool) -> str:
     """One audit of a listing: a button (or a link) opening it in the reader, naming the version
-    it pins, its author and the project commit it audits."""
+    it pins, its author and the project commit it audits; for an audit that did not load, why."""
     label = f" of {e(a['version_label'])}" if a.get("version_label") else ""
     commit = f' · commit <code>{e(a["commit"][:12])}</code>' if a.get("commit") else ""
     note = f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else ""
-    cls = "btn primary" if primary else "btn"
+    failed = a.get("state") in FAILED
+    why = f'<br><span class="small muted">{failure(a["state"], a.get("detail"))}</span>' \
+        if failed else ""
+    cls = "btn primary" if primary and not failed else "btn"
     return (f'<li><a class="{cls}" href="{e(reader_url(a["url"]))}">Open the audit{label}</a> '
-            f'by {e(a["author"])}{commit}{note}</li>')
+            f'by {e(a["author"])}{commit}{note}{why}</li>')
 
 
 def formalisation(f: dict, paper: dict, here: str | None = None) -> str:
@@ -208,9 +222,12 @@ def formalisation(f: dict, paper: dict, here: str | None = None) -> str:
     if f.get("review_status"):
         parts.append(f'<p class="small muted">Project review: '
                      f'{e(f["review_status"])}</p>')
-    if f.get("audit_state", {}).get("state") in ("unavailable", "incompatible"):
-        parts.append(f'<p class="small muted">Audit {e(f["audit_state"]["state"])}: {e(f["audit_state"].get("detail", ""))}</p>')
     audits = f.get("audits") or []
+    # Why the page shows none of the listing's audits, unless that audit's own line says it.
+    st = f.get("audit_state", {})
+    said = {(a.get("state"), str(a.get("detail") or "")) for a in audits}
+    if st.get("state") in FAILED and (st["state"], str(st.get("detail") or "")) not in said:
+        parts.append(f'<p class="small muted">{failure(st["state"], st.get("detail"))}</p>')
     pages = {v["id"]: v for v in paper.get("versions_shown") or []}
     elsewhere = [a for a in audits if here and a.get("version_id") in pages
                  and a["version_id"] != here]
