@@ -233,6 +233,9 @@ def formalisation(f: dict, paper: dict, here: str | None = None) -> str:
     said = {(a.get("state"), str(a.get("detail") or "")) for a in audits}
     if st.get("state") in FAILED and (st["state"], str(st.get("detail") or "")) not in said:
         parts.append(f'<p class="small muted">{failure(st["state"], st.get("detail"))}</p>')
+    if st.get("matched") == "number":
+        parts.append('<p class="small muted">Matched by printed number: this audit read another '
+                     'PDF of the paper than the one shown here.</p>')
     pages = {v["id"]: v for v in paper.get("versions_shown") or []}
     elsewhere = [a for a in audits if here and a.get("version_id") in pages
                  and a["version_id"] != here]

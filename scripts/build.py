@@ -103,6 +103,24 @@ def page_claims(found: dict | None, audits: dict) -> list[dict]:
                         found.get("pdf_sha256") if found else None)
 
 
+def number_matches(records: list[dict], joined: int, audits: dict) -> None:
+    """Mark each audit record that MachineChecked joined, by printed number, to one of the first
+    `joined` claims (the statements found in the page's PDF) when the audit read another PDF:
+    `matched`, with the printed number, the revision the audit read and the version it pins (its
+    label), when it gives them. On a page that shows no version of the paper, nothing says that
+    another PDF is the same revision, so such a match is never shown as the same statement
+    without saying how it was made."""
+    for c in records[:joined]:
+        for repo, rec in (c.get("audit") or {}).items():
+            if not rec.get("claim") or rec.get("same_pdf"):
+                continue
+            au = audits.get(repo) or {}
+            pv = au.get("paper_version") or {}
+            rec["matched"] = {"by": "number", "number": c["number"],
+                              "revision": (au.get("paper") or {}).get("revision"),
+                              **({"version": pv["label"]} if pv.get("label") else {})}
+
+
 def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Path | None = None,
                 pdf: str | None = None, version: str | None = None,
                 versions: list[dict] | None = None, stars: dict | None = None,
@@ -118,10 +136,15 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
     from prooflens.paper import write_paper_site
     found = found if found and "claims" in found else None
     records = page_claims(found, audits)
+    if version is None:
+        number_matches(records, len(found["claims"]) if found else 0, audits)
     for f in p["formalisations"]:
         if f["repository"] in audits:
             a = audits[f["repository"]]
             f["audit_state"] = {k: a[k] for k in ("state", "detail", "release", "commit") if k in a}
+            if any(((c.get("audit") or {}).get(f["repository"]) or {}).get("matched")
+                   for c in records):
+                f["audit_state"]["matched"] = "number"
     # The reader's panel offers each listing's report link as the static page builds it.
     entry = {**p, "formalisations": [{**f, "report_url": papers.report_url(p, f)}
                                      for f in p["formalisations"]]}
@@ -138,7 +161,10 @@ def write_paper(out: Path, p: dict, found: dict | None, audits: dict, where: Pat
 # commit). Each version then has its own page, `/papers/<slug>/<version>/`, with its own PDF,
 # statements and audits, and the reader's drop-down between them; each claim links to what it
 # became in the other versions (`version_claim_maps`). The paper's plain address shows its latest
-# published version. A paper whose audits pin at most one version keeps the one page it had.
+# published version. A paper whose audits pin one version keeps the one page it had, showing its
+# own PDF, unless its audits read another PDF than that one (`own_version`): the paper is then
+# shown at the version they pin. Otherwise a match by printed number to an audit that read
+# another PDF says so (`number_matches`).
 
 def label_audits(p: dict, audits: dict) -> None:
     """Give each registered audit of `p` what its load gave (`claims.audits_for` keys a
@@ -183,6 +209,29 @@ def pinned_versions(audits: dict) -> dict:
         return (0, int(n[1:]) if re.fullmatch(r"v[0-9]+", n) else 0, v["id"]) \
             if v["kind"] == "published" else (1, 0, v["id"])
     return dict(sorted(vs.items(), key=lambda kv: order(kv[1])))
+
+
+def own_version(p: dict, found: dict | None, audits: dict) -> bool:
+    """Whether a paper whose audits pin at most one version is shown at that version (its page
+    as a paper with several versions has it: arXiv's PDF of the version, or the PDF an audit
+    carries, with that version's statements or the audit's own places) rather than with its own
+    PDF. It is when the statements found in its PDF would otherwise be joined, by printed number,
+    to loaded audits that did not all read that PDF, every loaded audit pins the one version, and
+    the site can show that version's PDF."""
+    import claims
+    if not (found or {}).get("claims"):
+        return False
+    loaded = [a for a in audits.values() if a.get("state") == "loaded"]
+    if not loaded or all((a.get("paper") or {}).get("pdf_sha256") == found.get("pdf_sha256")
+                         for a in loaded):
+        return False
+    versions = pinned_versions(audits)
+    if len(versions) != 1 or not all(a.get("paper_version") for a in loaded):
+        return False
+    [v] = versions.values()
+    if v["kind"] == "published" and v.get("number"):
+        return claims.view_pdf(p, v["number"]) is not None
+    return any((a.get("paper") or {}).get("edition") for a in loaded)
 
 
 def default_version(versions: dict) -> str:
@@ -345,11 +394,12 @@ def version_claim_maps(versions: dict, records: dict, log=print) -> list[dict]:
 
 def write_versions(out: Path, p: dict, found: dict | None, by_version: dict,
                    audits: dict, stars: dict | None = None) -> list[dict]:
-    """The pages of a paper whose audits pin several versions: the default version's at the
-    paper's plain address and at its own, and every other version's at its own, each with the
-    claim maps between the versions (`version_claim_maps`), so that a claim links to what it
-    became in another version. Returns the versions as the static pages list them (`id`,
-    `label`, `href`, `slug`, and `default`, true for the default version)."""
+    """The pages of a paper whose audits pin several versions, or one it is shown at
+    (`own_version`): the default version's at the paper's plain address and at its own, and every
+    other version's at its own, each with the claim maps between the versions
+    (`version_claim_maps`), so that a claim links to what it became in another version. Returns
+    the versions as the static pages list them (`id`, `label`, `href`, `slug`, and `default`, true
+    for the default version)."""
     import copy
     import papers
     versions = pinned_versions(audits)
@@ -405,7 +455,7 @@ def build(out: Path, reader: Path, snapshot: Path) -> None:
     for p in ps:
         audits = snap["audits"].get(p["id"], {})
         label_audits(p, audits)
-        if len(pinned_versions(audits)) > 1:
+        if len(pinned_versions(audits)) > 1 or own_version(p, snap["found"].get(p["id"]), audits):
             p["versions_shown"] = write_versions(out, p, snap["found"].get(p["id"]),
                                                  snap["found_versions"].get(p["id"], {}), audits,
                                                  snap["stars"])

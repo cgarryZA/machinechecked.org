@@ -204,11 +204,122 @@ def test_an_audit_that_pins_another_version_than_its_listing_names_is_refused(
     assert "another version" in snap["audits"][PAPER_ID][REPO]["detail"]
 
 
+def exported() -> dict:
+    index = json.loads((AUDIT / "data" / "index.json").read_text())
+    return {c["number"]: c for c in index["claims"]}
+
+
+def another_pdf(monkeypatch, served):
+    """arXiv answers with another PDF of the paper than the one its audits read (an older
+    revision of the toy paper)."""
+    older = (AUDIT.parent.parent / "toy-audit-0.1.5" / "data" / "papers" / "T.pdf").read_bytes()
+
+    def fetch(url, limit=100_000_000, headers=None):
+        if url.startswith("https://export.arxiv.org/pdf/2601.00001"):
+            return older
+        return served(url, limit)
+    monkeypatch.setattr(claims, "fetch", fetch)
+
+
+@needs_poppler
 def test_one_version_keeps_the_one_page(tmp_path, monkeypatch, served):
+    """A paper whose audit pins one version keeps its one page, with its own PDF, when that PDF
+    is the one the audit read (the same bytes): its statements are joined to the audit's entries
+    within one PDF, at the audit's places, and no match needs saying how it was made."""
     d = site(tmp_path, monkeypatch, TWO[:1])
     assert "versions" not in index(d) and not (d / "manuscript-956fe0b").exists()
     assert index(d)["audits"][REPO]["paper_version"]["id"] == "manuscript:956fe0b"
     assert not any("counterparts" in c for c in index(d)["claims"])
+    assert index(d)["papers"][0]["pdf_url"] == "https://arxiv.org/pdf/2601.00001"
+    for c in index(d)["claims"]:
+        audit = c["by_project"][REPO]["audit"]
+        assert audit["same_pdf"] and "matched" not in audit
+        assert c["by_project"][REPO]["anchor"] == exported()[c["number"]]["anchor"]
+    assert "Matched by printed number" not in (d / "index.html").read_text()
+
+
+@needs_poppler
+def test_one_version_read_from_another_pdf_is_shown_at_that_version(tmp_path, monkeypatch,
+                                                                    served):
+    """When the audit read another PDF than the paper's own, the paper is shown at the version
+    the audit pins, as a paper with several versions is: the manuscript from the PDF its audit
+    carries, with the audit's entries at the audit's places. None is matched by printed number to
+    a statement of the other PDF (#55)."""
+    another_pdf(monkeypatch, served)
+    d = site(tmp_path, monkeypatch, TWO[:1])
+    plain = index(d)
+    assert plain["version"] == "manuscript:956fe0b"
+    assert [(v["id"], v["href"]) for v in plain["versions"]] == [
+        ("manuscript:956fe0b", "/papers/2601.00001/manuscript-956fe0b/")]
+    [edition] = plain["editions"]
+    assert plain["papers"][0]["pdf_url"] == \
+        f"/papers/2601.00001/data/papers/{edition['edition']}.pdf"
+    assert (d / "data" / "papers" / f"{edition['edition']}.pdf").is_file()
+    assert sorted(c["number"] for c in plain["claims"]) == sorted(exported())
+    for c in plain["claims"]:
+        mine = c["by_project"][REPO]
+        assert c["projects"] == [REPO], "the audit's own entry, joined to no other statement"
+        assert mine["anchor"] == exported()[c["number"]]["anchor"]
+        assert mine["audit"]["same_pdf"] and "matched" not in mine["audit"]
+    assert index(d / "manuscript-956fe0b")["claims"] == plain["claims"]
+    html = (d / "index.html").read_text()
+    assert ('Versions: <a href="/papers/2601.00001/manuscript-956fe0b/" aria-current="page">'
+            "Latest manuscript (commit 956fe0b)</a>") in html
+
+
+@needs_poppler
+def test_one_published_version_read_from_another_pdf_is_shown_from_arxiv(tmp_path, monkeypatch,
+                                                                         served):
+    """An audit of arXiv v1 that read its own compilation of it: the paper is shown at arXiv v1,
+    from arXiv, and v1's statements are joined to the audit's entries within the version it
+    pins."""
+    another_pdf(monkeypatch, served)
+    d = site(tmp_path, monkeypatch, TWO[1:])
+    plain = index(d)
+    assert plain["version"] == "arxiv:2601.00001v1"
+    assert plain["papers"][0]["pdf_url"] == "https://arxiv.org/pdf/2601.00001v1"
+    joined = [c for c in plain["claims"] if not c.get("projects")]
+    assert joined, "the statements found in arXiv's v1"
+    for c in joined:
+        audit = c["by_project"][REPO]["audit"]
+        assert audit["status_code"] == exported()[c["number"]]["status_code"]
+        assert not audit["same_pdf"] and "matched" not in audit
+        assert c["by_project"][REPO]["anchor"]["kind"] == "approximate"
+
+
+@needs_poppler
+def test_a_match_by_printed_number_to_an_audit_of_another_pdf_says_so(tmp_path, monkeypatch,
+                                                                     served):
+    """An audit that pins a manuscript and carries no PDF: the paper keeps its one page with its
+    own PDF, and each statement joined to the audit by printed number says so, with the revision
+    the audit read and the version it pins (#55). The audit's status is shown unchanged."""
+    root = tmp_path / "latest"
+    idx = json.loads((root / "data" / "index.json").read_text())
+    idx["papers"][0]["pdf"] = None
+    idx["papers"][0].pop("pdf_sha256")
+    (root / "data" / "index.json").write_text(json.dumps(idx))
+    (root / "data" / "papers" / "T.pdf").unlink()
+    another_pdf(monkeypatch, served)
+    d = site(tmp_path, monkeypatch, TWO[:1])
+    plain = index(d)
+    assert "versions" not in plain and not (d / "manuscript-956fe0b").exists()
+    assert plain["papers"][0]["pdf_url"] == "https://arxiv.org/pdf/2601.00001"
+    joined = [c for c in plain["claims"] if not c.get("projects")]
+    assert joined
+    for c in joined:
+        audit = c["by_project"][REPO]["audit"]
+        assert audit["matched"] == {"by": "number", "number": c["number"], "revision": REVISION,
+                                    "version": "Latest manuscript (commit 956fe0b)"}
+        assert c["by_project"][REPO]["status_code"] == exported()[c["number"]]["status_code"]
+        chunk = json.loads((d / "data" / "claims" / c["file"]).read_text())
+        assert chunk["by_project"][REPO]["audit"]["matched"] == audit["matched"]
+    # The audit's entries no statement of this PDF carries are its own, and match nothing.
+    assert all("matched" not in c["by_project"][REPO]["audit"]
+               for c in plain["claims"] if c.get("projects"))
+    assert "Matched by printed number: this audit read another PDF" in \
+        (d / "index.html").read_text()
+    built = json.loads((tmp_path / "out" / "build.json").read_text())
+    assert built["papers"][PAPER_ID][0]["audit"]["matched"] == "number"
 
 
 @needs_poppler
