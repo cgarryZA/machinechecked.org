@@ -7,11 +7,12 @@ registered audit (`claims.audits_for`), and asks GitHub for the star count of ea
 repository. It writes them to a directory:
 
     snapshot.json     the registry as shown (followed listings at their resolved commits), each
-                      paper's statements or why its PDF was not read (and, for a paper whose
-                      audits pin several arXiv versions, each version's), each audit as loaded or
-                      why it was not, what the follow check compares (`follow.json`), and the
-                      GitHub star count of each repository with an audit (`stars`, None when
-                      GitHub did not answer), which orders a paper's audits
+                      paper's statements or why its PDF was not read (and, for a paper shown
+                      at the arXiv versions its audits pin, each version's), each audit as
+                      loaded or why it was not, what the follow check compares
+                      (`follow.json`), and the GitHub star count of each repository with an
+                      audit (`stars`, None when GitHub did not answer), which orders a paper's
+                      audits
     pdfs/<edition>    the audited PDFs the audits carry
 
 Rendering the same snapshot again gives the same site, without the network. A fetch that fails
@@ -76,9 +77,11 @@ def prepare(registry: Path, out: Path, claims_cache: Path | None, follow: bool =
         else:
             loaded = claims.audits_for(p, log=log)
             used.update(audit_versions(loaded))
-            # A paper whose audits pin several versions has a page per version: the statements
-            # of each arXiv version are read from that version's PDF.
-            if claims_cache is not None and len(build.pinned_versions(loaded)) > 1:
+            # A paper whose audits pin several versions has a page per version, and so has one
+            # whose audits pin one version and read another PDF than its own (`build.own_version`):
+            # the statements of each arXiv version are read from that version's PDF.
+            if claims_cache is not None and (len(build.pinned_versions(loaded)) > 1 or
+                                             build.own_version(p, found[p["id"]], loaded)):
                 found_versions[p["id"]] = {
                     v["id"]: claims.claims_for(p, claims_cache, log=log, version=v["number"])
                     for v in build.pinned_versions(loaded).values() if v.get("number")}

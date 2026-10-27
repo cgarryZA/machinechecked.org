@@ -77,6 +77,14 @@ pins. When a paper's audits pin several versions, each version has its own page,
 the manuscript's audit carries), statements and audits, and the reader offers a drop-down between
 them; `/papers/<id>/` shows the latest published version.
 
+A paper whose audits pin one version is shown with its own PDF when that PDF is the one they read
+(the same bytes). When they read another PDF, the paper is shown at the version they pin, as
+above: arXiv's PDF of that version, or the PDF the manuscript's audit carries, with the audit's
+places. When the site cannot show that version (an audit that names no version, or a manuscript's
+audit without its PDF), the statements found in the paper's PDF are matched to the audit's entries
+by printed number: each match records it (`matched` on the claim's audit record), and the
+listing's card says so.
+
 Each claim says what it became in the paper's other versions, with a link to it there ("Theorem
 3.1 in Latest manuscript (commit 1f67672), statement changed"). MachineChecked relates the claims
 of two versions (`claim_map`) by their LaTeX labels, else by their statement texts, as the
