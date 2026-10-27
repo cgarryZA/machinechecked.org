@@ -57,12 +57,25 @@ def audit_key(url: str) -> str:
     return "audit:" + url.rstrip("/") + "/"
 
 
-def published_audit_version(url: str) -> str | None:
+def publication(desc) -> str | None:
+    """Which publication of an audit its descriptor (`audit.json`) is: MachineChecked's identity
+    of what it publishes (`audit_version`: its release, project commit, paper and data path) and
+    when the descriptor was written (`created`, new on every export). A new release at the same
+    project commit is a new publication, and so is a re-export of the same release (by a newer
+    MachineChecked, or with another display). None for a descriptor the site cannot read."""
     from prooflens.published import audit_version
+    if not isinstance(desc, dict) or desc.get("schema") != "machinechecked/audit@1":
+        return None
+    created = desc.get("created")
+    return audit_version(desc) + (f"@{created}" if isinstance(created, str) and created else "")
+
+
+def published_audit_version(url: str) -> str | None:
+    """The publication (`publication`) the audit at `url` is at now, or None when its descriptor
+    cannot be read."""
     from claims import fetch
     try:
-        d = json.loads(fetch(url.rstrip("/") + "/audit.json", 1_000_000))
-        return audit_version(d) if d.get("schema") == "machinechecked/audit@1" else None
+        return publication(json.loads(fetch(url.rstrip("/") + "/audit.json", 1_000_000)))
     except (OSError, ValueError):
         return None
 

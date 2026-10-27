@@ -152,7 +152,11 @@ def audits_for(paper: dict, log=print) -> dict:
     """Complete public snapshots, or a visible import state, of every registered audit. A
     repository's first audit is under the repository's name; a further one, such as an audit of
     another version of the paper, under `<repository>@<n>` (n = 2, 3, …). Each record names its
-    `repository` and the version its listing names (`listing_version`, or None)."""
+    `repository`, the version its listing names (`listing_version`, or None) and, when its
+    descriptor was read, the publication it was read at (`publication`, see
+    `follow.publication`): the first descriptor read, which is the one a loaded audit was
+    checked against."""
+    import follow
     from prooflens.paper import load_published_audit
     out = {}
     for f in paper.get("formalisations", []):
@@ -162,11 +166,24 @@ def audits_for(paper: dict, log=print) -> dict:
             # `paper_version`, which names one version for all its audits.
             project = {k: v for k, v in f.items() if k != "paper_version"} if a.get("version") \
                 else f
+            descriptor = a["url"].rstrip("/") + "/audit.json"
+            seen = {}
+
+            def reading(url, limit, descriptor=descriptor, seen=seen):
+                raw = fetch(url, limit)
+                if url == descriptor:
+                    seen.setdefault("descriptor", raw)
+                return raw
             try:
-                rec = load_published_audit(paper, project, a, fetch)
+                rec = load_published_audit(paper, project, a, reading)
             except (OSError, ValueError, KeyError, TypeError) as e:
                 state = "unavailable" if isinstance(e, OSError) else "incompatible"
                 rec = {"state": state, "detail": str(e), "url": a["url"]}
                 log(f"{paper['id']}: audit {state}: {e}")
-            out[key] = {**rec, "repository": f["repository"], "listing_version": a.get("version")}
+            try:
+                published = follow.publication(json.loads(seen["descriptor"]))
+            except (KeyError, ValueError):
+                published = None
+            out[key] = {**rec, "repository": f["repository"], "listing_version": a.get("version"),
+                        **({"publication": published} if published else {})}
     return out

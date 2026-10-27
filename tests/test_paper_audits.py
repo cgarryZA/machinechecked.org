@@ -86,11 +86,42 @@ def test_a_published_audit_supplies_statuses_attribution_and_exact_places(tmp_pa
         mine = c["by_project"][REPO]
         # The audit's own code, unchanged, at the top level and for its project.
         assert c["status_code"] == mine["status_code"] == by_number[c["number"]]["status_code"]
+        # The claim's record on the page carries the same code, beside the audit's own record.
+        chunk = json.loads((d / "data" / "claims" / c["file"]).read_text())
+        assert chunk["status_code"] == chunk["by_project"][REPO]["status_code"] == \
+            chunk["by_project"][REPO]["record"]["status_code"] == c["status_code"]
         # The displayed PDF is the audited one: the audit's exact places carry over.
         assert mine["anchor"] == by_number[c["number"]]["anchor"]
         assert mine["anchor"]["kind"] == "exact"
     # The static page and the papers list say an audit is published.
     assert papers.level(p) == "Audit published"
+
+
+@needs_poppler
+def test_a_place_the_audit_gives_approximately_stays_approximate(tmp_path, monkeypatch, served):
+    """On the audited PDF, a statement the audit locates only approximately is drawn as
+    approximate; the audit's exact places stay exact."""
+    from prooflens import manifest as mf
+    root = tmp_path / "audit"
+    shutil.copytree(AUDIT, root)
+    idx = json.loads((root / "data" / "index.json").read_text())
+    row = idx["claims"][1]
+    chunk = root / "data" / "claims" / row["file"]
+    rec = json.loads(chunk.read_text())
+    rec["anchor"]["kind"] = "approximate"
+    row["anchor"] = mf.index_anchor(rec["anchor"], "approximate")
+    chunk.write_text(json.dumps(rec))
+    (root / "data" / "index.json").write_text(json.dumps(idx))
+
+    def fetch(url, limit=100_000_000, headers=None):
+        if url.startswith(AUDIT_URL) and (root / url[len(AUDIT_URL):]).is_file():
+            return (root / url[len(AUDIT_URL):]).read_bytes()
+        return served(url, limit)
+    monkeypatch.setattr(claims, "fetch", fetch)
+    index, _ = page_index(tmp_path, paper())
+    kinds = {c["number"]: c["by_project"][REPO]["anchor"]["kind"] for c in index["claims"]}
+    assert kinds.pop(row["number"]) == "approximate"
+    assert set(kinds.values()) == {"exact"}
 
 
 @needs_poppler
@@ -113,8 +144,14 @@ def test_an_audit_entry_the_pdf_headings_miss_is_still_on_the_page(tmp_path, ser
     missed = found["claims"].pop(0)
     index, _ = page_index(tmp_path, p, found)
     extra = [c for c in index["claims"] if c["number"] == missed["number"]]
+    exported = {c["number"]: c for c in audit_claims()}[missed["number"]]
     assert len(extra) == 1 and extra[0]["by_project"][REPO]["status_code"] == \
-        {c["number"]: c for c in audit_claims()}[missed["number"]]["status_code"]
+        exported["status_code"]
+    # It is the audit's entry, under the audit's identifier, and attributed to the audit.
+    assert extra[0]["projects"] == [REPO]
+    meta = extra[0]["by_project"][REPO]["audit"]
+    assert meta["claim"] == exported["id"] and meta["audit"] == AUDIT_URL
+    assert meta["author"] == index["audits"][REPO]["author"]
 
 
 def test_without_a_readable_pdf_the_audit_still_lists_its_claims(tmp_path, served):
@@ -152,6 +189,57 @@ def test_a_registered_audit_that_fails_to_load_is_not_an_absent_audit(
     assert "Audit: awaiting publication" in papers.paper_page(q)
 
 
+@needs_poppler
+@pytest.mark.parametrize("failure, code", [(OSError("offline"), "audit.unavailable"),
+                                           (None, "audit.incompatible")])
+def test_each_statement_says_its_audit_did_not_load_rather_than_that_none_is_published(
+        tmp_path, monkeypatch, served, failure, code):
+    found = statements(tmp_path, paper())
+
+    def fetch(url, limit=100_000_000, headers=None):
+        if url.startswith(AUDIT_URL):
+            if failure:
+                raise failure
+            return b'{"schema": "machinechecked/audit@0"}'
+        return served(url, limit)
+    monkeypatch.setattr(claims, "fetch", fetch)
+    index, _ = page_index(tmp_path, paper(), found)
+    assert index["claims"] and {c["by_project"][REPO]["status_code"]
+                                for c in index["claims"]} == {code}
+    # Without a registered audit, the same statements are only unlinked.
+    index, _ = page_index(tmp_path, paper(audits=False), found)
+    assert {c["by_project"][REPO]["status_code"] for c in index["claims"]} == {"link.none"}
+
+
+def test_an_audit_that_fails_beside_one_that_loads_is_reported(tmp_path, served):
+    """A repository's further audit that does not load is reported on its own line, on the
+    papers list and in `/build.json`, while the page shows the audit that loaded."""
+    missing = "https://audit.example/missing/"
+    p = paper()
+    p["formalisations"][0]["audits"].append({"url": missing, "author": "B. Author"})
+    audits = claims.audits_for(p, log=lambda m: None)
+    assert audits[REPO]["state"] == "loaded" and audits[f"{REPO}@2"]["state"] == "unavailable"
+    build.label_audits(p, audits)
+    out = tmp_path / "out"
+    index = build.write_paper(out, p, None, build.page_audits(audits, None, None))
+    assert index["audits"][REPO]["url"] == AUDIT_URL and index["audits"][REPO]["state"] == "loaded"
+    assert [a.get("state") for a in index["paper"]["formalisations"][0]["audits"]] == \
+        ["loaded", "unavailable"]
+    assert papers.level(p) == "Audit needs attention"
+    page = papers.paper_page(p)
+    loaded, failed = [li for li in page.split("<li>") if "Open the audit" in li]
+    assert 'class="btn primary"' in loaded and "Audit unavailable" not in loaded
+    assert 'class="btn"' in failed and \
+        f"Audit unavailable: offline: {missing}audit.json" in failed
+    assert page.count("Audit unavailable") == 1 and "awaiting publication" not in page
+    built = build.provenance(out, [p], "0")["papers"][p["id"]][0]
+    assert built["audit"]["state"] == "loaded"
+    assert [(a["url"], a["state"]) for a in built["audits"]] == [(AUDIT_URL, "loaded"),
+                                                               (missing, "unavailable")]
+    assert built["audits"][0]["release"] == audits[REPO]["release"]
+    assert built["audits"][1]["detail"] == audits[f"{REPO}@2"]["detail"]
+
+
 def test_an_audit_that_fails_to_load_does_not_rebuild_the_site_on_every_check(
         monkeypatch, served):
     """The build records the publication of a failed audit too: the check workflow rebuilds when
@@ -177,8 +265,41 @@ def test_a_loaded_audit_records_the_publication_it_was_read_at(served):
     audits = claims.audits_for(paper(), log=lambda m: None)
     assert audits[REPO]["state"] == "loaded"
     used = prepare.audit_versions(audits)
-    assert used == {follow.audit_key(AUDIT_URL): audits[REPO]["version"]}
+    descriptor = json.loads((AUDIT / "audit.json").read_text())
+    assert used == {follow.audit_key(AUDIT_URL): follow.publication(descriptor)}
+    # MachineChecked's identity of the publication, and when its descriptor was written.
+    assert used[follow.audit_key(AUDIT_URL)] == \
+        f"{audits[REPO]['version']}@{descriptor['created']}"
     assert follow.moved([paper()], used) == []
+
+
+@pytest.mark.parametrize("republish", [
+    pytest.param(lambda d: {**d, "release": "r-republished",
+                            "created": "2026-10-20T08:00:00+00:00"}, id="a new release"),
+    pytest.param(lambda d: {**d, "created": "2026-10-20T08:00:00+00:00"},
+                 id="the same release exported again"),
+])
+def test_an_audit_republished_at_the_same_commit_rebuilds_the_site(monkeypatch, served,
+                                                                   republish):
+    """The follow check rebuilds the site when a loaded audit is republished at the project
+    commit it already had: with a new release, or the same release exported again (a newer
+    MachineChecked, or another display, writes other data under the same release)."""
+    p = paper()
+    state = {"descriptor": json.loads((AUDIT / "audit.json").read_text())}
+
+    def fetch(url, limit=100_000_000, headers=None):
+        if url == AUDIT_URL + "audit.json":
+            return json.dumps(state["descriptor"]).encode()
+        return served(url, limit)
+    monkeypatch.setattr(claims, "fetch", fetch)
+    audits = claims.audits_for(p, log=lambda m: None)
+    assert audits[REPO]["state"] == "loaded"
+    used = prepare.audit_versions(audits)
+    assert follow.moved([p], used) == []
+    commit = state["descriptor"]["formalisation"]["commit"]
+    state["descriptor"] = republish(state["descriptor"])
+    assert state["descriptor"]["formalisation"]["commit"] == commit
+    assert follow.moved([p], used) == [f"{follow.audit_key(AUDIT_URL)}: publication changed"]
 
 
 def test_a_transient_failure_is_retried_and_a_missing_file_is_not(monkeypatch):

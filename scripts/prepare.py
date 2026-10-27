@@ -33,14 +33,14 @@ SCHEMA = "machinechecked.org/snapshot@2"
 
 
 def audit_versions(audits: dict) -> dict:
-    """The publication each registered audit was at when it was read (by `follow.audit_key`).
-    A loaded audit gives its own version; one that failed to load is asked for its descriptor's,
-    so that the follow check rebuilds when it is republished, not on every check while it stays
-    broken."""
+    """The publication each registered audit was at when it was read (`follow.publication`, by
+    `follow.audit_key`): the descriptor its load read, else (an audit whose descriptor could not
+    be read then) its descriptor's now. A failed audit is recorded too, so that the follow check
+    rebuilds when it is republished, not on every check while it stays broken."""
     import follow as fl
     out = {}
     for a in audits.values():
-        version = a.get("version") or fl.published_audit_version(a["url"])
+        version = a.get("publication") or fl.published_audit_version(a["url"])
         if version:
             out[fl.audit_key(a["url"])] = version
     return out
