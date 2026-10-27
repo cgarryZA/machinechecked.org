@@ -8,6 +8,17 @@ Paper pages load their listed projects’ audit records, with proof results, rev
 locations. Each audit carries its author and revision. Readers choose the original paper or an
 explicit audited PDF revision. `/read/?audit=<address>` opens a published audit directly.
 
+An audit that exports MachineChecked's semantic summary (`prooflens/semantic-summary@1`, in its
+`data/index.json`) shows it under its link on the paper's page, as that audit records it: per
+unit (statements, notation records, proof steps), the claims and their links, the correspondence
+and evidence basis of the audit's readings, the reviews with their provenance and the recorded
+findings, each count linked to those claims in the audit's Overview. Other sets of readings (a
+reviewer's, a workspace's) are linked and counted apart. The site shows the counts as they are, in
+MachineChecked's words, and derives nothing from proof statuses. A summary that names another
+release, project commit, repository, paper revision or version, or author than its audit is
+marked incompatible, and one the pinned package does not read is marked unsupported; the audit
+keeps its link. An audit without a summary is shown as before.
+
 A paper version with audits from several repositories opens on the audit of the most-starred
 repository (GitHub star counts, read when the site builds; the registry's order when GitHub does
 not answer). A claim that audit does not map shows the next audit's evidence, labelled with its
@@ -21,6 +32,7 @@ author, repository and commit. Choosing one repository shows only its audit.
 | `registry/papers/*.json` | one file per paper: where it is, the Lean repositories that formalise it and who says so, and published audits (`registry/schema.json`) |
 | `scripts/papers.py` | builds `/papers/` and a plain HTML page per paper from the registry |
 | `scripts/claims.py` | finds each paper's statements in its PDF and the links each repository's `formalization.yaml` declares; MachineChecked (`prooflens.paper`) writes them beside the page as the reader's data |
+| `scripts/summary.py` | each audit's semantic summary: read from the index its load read, checked against its audit, and shown on its line of the paper's page |
 | `scripts/prepare.py` | the build's network step: reads followed branches' heads, the papers' statements and the registered audits into a snapshot |
 | `scripts/build.py` | renders a snapshot into `_site/`, without the network: `site/`, the reader at `/read/`, the paper pages' data, `sitemap.xml`, `robots.txt`, `llms.txt`, `follow.json`, `build.json` |
 | `TOOL_VERSION` | the MachineChecked release (or commit) whose reader the site serves |
@@ -105,6 +117,7 @@ prepare.py (network) ── followed branch heads (follow.resolve)
                         PDF address, listing commits and package version)
                      ── each listing's formalization.yaml at its commit (claims.alignment)
                      ── each registered audit (claims.audits_for → prooflens load_published_audit)
+                        and its semantic summary (summary.read, from the index that load read)
                      ──▶ snapshot: registry as shown, statements, audits, follow.json data
 build.py (no network) ── per paper: prooflens apply_audits + write_paper_site → data/
                         (a paper's versions also related by prooflens claim_map)
@@ -127,7 +140,10 @@ that fails is recorded as that failure: a PDF that was not read has no statement
 that did not load shows "Audit unavailable" or "Audit update required", never "no audit
 published". Each registered audit keeps its own state: one that did not load is reported on its
 own line, on the papers list and in `/build.json`, also when another audit of the same repository
-loaded. `prepare.py --offline` writes a snapshot that reads nothing.
+loaded. Each also keeps its own semantic summary: the snapshot records where it was read, its
+format, digest and state, the pins it names and the audited paper's counts, and the page shows
+each audit's summary on that audit's line, never another's. `prepare.py --offline` writes a
+snapshot that reads nothing.
 
 ## Release
 
@@ -145,7 +161,7 @@ main ── Site workflow: the same, then deploy to GitHub Pages
           /read/       the package's reader, copied unchanged
           /build.json  site commit, TOOL_VERSION, installed version, reader digest,
                        each listing's commit, the audit release shown, and every
-                       registered audit's state
+                       registered audit's state (and its semantic summary's state and digest)
           /follow.json followed branches' commits and audits' publications, for the follow check
 ```
 
@@ -154,8 +170,11 @@ stops, naming what is missing, if the installed package lacks what the site uses
 update proposes a release only once pip can install it. The `Follow listed branches` check rebuilds
 when a followed branch moves or an audit is republished: its descriptor (`audit.json`) names a
 new release, or was written again for the same release, also at an unchanged project commit
-(`follow.publication`). If the check cannot run, the workflow
-fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
+(`follow.publication`). An audit exported again with other readings or reviews is such a
+publication, so its new semantic summary is shown after the rebuild. If the check cannot run, the
+workflow fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
+The semantic summary is shown once `TOOL_VERSION` pins a release that reads it; its tests
+(`tests/test_audit_summaries.py`) run when the installed package does.
 
 The landing page's screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from
 the built site's reader and an exported audit; how to run it is at the top of the script.

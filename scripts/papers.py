@@ -199,16 +199,21 @@ def failure(state: str, detail: str | None) -> str:
 
 def audit_line(a: dict, primary: bool) -> str:
     """One audit of a listing: a button (or a link) opening it in the reader, naming the version
-    it pins, its author and the project commit it audits; for an audit that did not load, why."""
+    it pins, its author and the project commit it audits; for an audit that did not load, why;
+    for one that exports a semantic summary, the summary (`summary.html`), linked into the
+    same audit."""
+    import summary
     label = f" of {e(a['version_label'])}" if a.get("version_label") else ""
     commit = f' · commit <code>{e(a["commit"][:12])}</code>' if a.get("commit") else ""
     note = f' <span class="small muted">— {e(a["note"])}</span>' if a.get("note") else ""
     failed = a.get("state") in FAILED
     why = f'<br><span class="small muted">{failure(a["state"], a.get("detail"))}</span>' \
         if failed else ""
+    semantic = "" if failed else summary.html(a.get("semantic"), reader_url(a["url"]),
+                                              a.get("version_label"))
     cls = "btn primary" if primary and not failed else "btn"
     return (f'<li><a class="{cls}" href="{e(reader_url(a["url"]))}">Open the audit{label}</a> '
-            f'by {e(a["author"])}{commit}{note}{why}</li>')
+            f'by {e(a["author"])}{commit}{note}{why}{semantic}</li>')
 
 
 def formalisation(f: dict, paper: dict, here: str | None = None) -> str:
