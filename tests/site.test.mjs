@@ -6,10 +6,12 @@
 //
 // Cases: a paper with two formalisations (the selector, and one project's links at a time), a
 // paper whose audits pin two versions (a page per version, the drop-down between them, and each
-// claim's link to what it became in the other version), a paper with no audit, a paper page with a published audit (a synthetic export of the toy paper,
-// tests/fixtures/paper-audit/, joined by the site's own build code), and audits opened in the
-// reader from their data: the toy audit as this version exports it is the demo's; an export
-// frozen from an older version (tests/fixtures/) must keep opening.
+// claim's link to what it became in the other version), a paper whose one audit read another
+// PDF than arXiv's (shown at the audited version), a paper with no audit, a paper page with a
+// published audit (a synthetic export of the toy paper, tests/fixtures/paper-audit/, joined by
+// the site's own build code), and audits opened in the reader from their data: the toy audit as
+// this version exports it is the demo's; an export frozen from an older version (tests/fixtures/)
+// must keep opening.
 
 import { chromium } from "playwright";
 import http from "node:http";
@@ -128,6 +130,42 @@ const versionedServer = http.createServer((req, res) => {
 }).listen(0);
 const versionedOrigin = `http://127.0.0.1:${versionedServer.address().port}`;
 const versionIndex = (dir) => JSON.parse(fs.readFileSync(path.join(versioned_site, "papers", "2601.00001", dir, "data", "index.json")));
+
+// A paper whose one audit pins the latest manuscript and read another PDF than arXiv's (#55),
+// built by the site's own code: it is shown at the audited manuscript, not joined by printed
+// number to the statements of arXiv's PDF. Served at the root of its own origin.
+const one_site = fs.mkdtempSync(path.join(os.tmpdir(), "mc-site-one-version-"));
+const oneBuild = spawnSync(process.env.PYTHON || "python3", ["-c", `
+import sys, tempfile
+from pathlib import Path
+sys.path.insert(0, sys.argv[2]); sys.path.insert(0, sys.argv[3])
+import build, claims, prepare
+import test_paper_versions as t
+from test_snapshot import registry
+out, reader = Path(sys.argv[1]), Path(sys.argv[4])
+work = Path(tempfile.mkdtemp())
+root = t.write_version_fixture(work / "latest", t.MANUSCRIPT)
+older = (t.AUDIT.parent.parent / "toy-audit-0.1.5" / "data" / "papers" / "T.pdf").read_bytes()
+def fetch(url, limit=100_000_000, headers=None):
+    if url.startswith(t.LATEST_URL) and (root / url[len(t.LATEST_URL):]).is_file():
+        return (root / url[len(t.LATEST_URL):]).read_bytes()
+    if url.startswith("https://export.arxiv.org/pdf/2601.00001"):
+        return older
+    raise OSError("offline")
+claims.fetch, claims.alignment = fetch, lambda r, c: None
+prepare.prepare(registry(work, t.entry(t.TWO[:1])), work / "snapshot", work / "cache", log=lambda m: None)
+build.build(out, reader, work / "snapshot")
+`, one_site, path.join(here, "..", "scripts"), here, path.join(site, "read")], { encoding: "utf8" });
+if (oneBuild.status !== 0) throw new Error(oneBuild.stderr);
+const oneServer = http.createServer((req, res) => {
+  let p = path.join(one_site, decodeURIComponent(req.url.split("?")[0]));
+  if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, "index.html");
+  if (!p.startsWith(one_site) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { "content-type": types[path.extname(p)] || "application/octet-stream" });
+  fs.createReadStream(p).pipe(res);
+}).listen(0);
+const oneOrigin = `http://127.0.0.1:${oneServer.address().port}`;
+const oneIndex = JSON.parse(fs.readFileSync(path.join(one_site, "papers", "2601.00001", "data", "index.json")));
 
 // The paper pages, from the data written beside each.
 const pages = fs.readdirSync(path.join(site, "papers"), { withFileTypes: true })
@@ -297,6 +335,35 @@ for (const width of [1300, 390]) await check(`a claim links to what it became in
   if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `counterparts-${width}.png`) }); }
 });
 
+for (const width of [1300, 390]) await check(`a paper whose one audit read another PDF opens at the audited version, at ${width}px`, async (pg) => {
+  await pg.setViewportSize({ width, height: 900 });
+  assert.equal(oneIndex.version, "manuscript:956fe0b");
+  await pg.goto(`${oneOrigin}/papers/2601.00001/`);
+  await pg.waitForSelector("nav.toc li", { state: "attached" });
+  // The audit's own claims, with its statuses, on the PDF the audit read (served beside the page).
+  if (width > 700) {
+    const shown = await pg.locator(".reader-layout > nav.toc li a").evaluateAll((as) => as.map((a) => a.title));
+    assert.deepEqual(shown.sort(), oneIndex.claims.filter((c) => !c.status_code.startsWith("scope."))
+      .map((c) => c.by_project["cgarryZA/MachineChecked"].status).sort());
+    await pg.locator(".pdf .page canvas").first().waitFor();
+  }
+  // One version: no drop-down; the panel names the version the audit pins.
+  assert.equal(await pg.locator("select[aria-label='Paper version shown']").count(), 0);
+  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  await pg.locator(".info .card").waitFor();
+  assert.deepEqual((await pg.locator(".info .audit.here .btn").allTextContents()).map((t) => t.trim()),
+    ["Open the audit of Latest manuscript (commit 956fe0b)"]);
+  // A claim opens at the audit's exact place.
+  const claim = oneIndex.claims.find((c) => c.status_code === "formal.accepted");
+  await pg.goto(`${oneOrigin}/papers/2601.00001/#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
+  const side = pg.locator(".reader-layout > aside.side");
+  await side.getByText(claim.number, { exact: false }).first().waitFor();
+  const text = await side.textContent();
+  assert.match(text, /exact location/);
+  assert.doesNotMatch(text, /approximate/i);
+  assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+});
+
 const plain = pages.find((p) => !audited(p) && p.index.claims.length);
 await check(`a paper with no audit (${plain?.slug})`, async (pg) => {
   assert.ok(plain, "no listed paper without an audit has statements found in its PDF");
@@ -379,7 +446,9 @@ for (const width of [1360, 390, 320]) await check(`homepage layout and preview a
 await browser.close();
 server.close();
 versionedServer.close();
+oneServer.close();
 fs.rmSync(versioned_site, { recursive: true, force: true });
+fs.rmSync(one_site, { recursive: true, force: true });
 fs.rmSync(synthetic, { recursive: true, force: true });
 fs.rmSync(audited_site, { recursive: true, force: true });
 if (failures) {

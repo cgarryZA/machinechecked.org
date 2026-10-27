@@ -93,6 +93,8 @@ def test_a_published_audit_supplies_statuses_attribution_and_exact_places(tmp_pa
         # The displayed PDF is the audited one: the audit's exact places carry over.
         assert mine["anchor"] == by_number[c["number"]]["anchor"]
         assert mine["anchor"]["kind"] == "exact"
+        # Joined within one PDF: no match needs saying how it was made.
+        assert "matched" not in mine["audit"]
     # The static page and the papers list say an audit is published.
     assert papers.level(p) == "Audit published"
 
@@ -131,6 +133,14 @@ def test_another_revision_of_the_pdf_gets_no_coordinates_from_the_audit(tmp_path
     for c in index["claims"]:
         anchor = c["by_project"][REPO].get("anchor")
         assert anchor is None or anchor["kind"] != "exact"
+    # The audit names no version, so the page keeps the PDF it lists, and each statement joined
+    # to the audit by printed number says so, with the revision the audit read (#55).
+    joined = [c for c in index["claims"] if not c.get("projects")]
+    assert joined
+    for c in joined:
+        assert c["by_project"][REPO]["audit"]["matched"] == {
+            "by": "number", "number": c["number"],
+            "revision": index["editions"][0]["revision"]}
     # The audited revision stays available beside the original.
     [edition] = index["editions"]
     assert (d / "data" / "papers" / f"{edition['edition']}.pdf").read_bytes() == \
