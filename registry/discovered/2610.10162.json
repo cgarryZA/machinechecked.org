@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2610.10162",
+ "title": "Limit shapes for centrally excited walks",
+ "authors": [
+  "Ahmed Bou-Rabee",
+  "Tuan-Minh Nguyen",
+  "Yuval Peres",
+  "Arvind Singh"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2610.10162"
+ },
+ "formalisations": [
+  {
+   "repository": "nitromannitol/Centrally-Excited-Random-Walk",
+   "commit": "411431c4b4ed185336c26053262d6220af9c2be0",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

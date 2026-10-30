@@ -1,0 +1,32 @@
+{
+ "id": "arxiv:2609.35632",
+ "title": "Uniqueness of four-body convex central configurations for all masses",
+ "authors": [
+  "Tejasvi Singh Tomar"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.35632"
+ },
+ "formalisations": [
+  {
+   "repository": "tejasvi/lean4body-optimal-bound",
+   "commit": "4967a62ec6f41d075d1808bbfd091927bcfe9c7b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  },
+  {
+   "repository": "tejasvi/lean4body-uniqueness",
+   "commit": "353653eceec402c993183f240beacaa20e6f39ad",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

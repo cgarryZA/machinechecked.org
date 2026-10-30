@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2608.02327",
+ "title": "ICC property (T) groups without W$^*$-superrigidity",
+ "authors": [
+  "Shuoxing Zhou"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.02327"
+ },
+ "formalisations": [
+  {
+   "repository": "utensil/connes-rigidity",
+   "commit": "9b164b6e18f784e8b158950417ca751a56eace14",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

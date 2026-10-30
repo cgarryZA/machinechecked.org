@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1004.5183",
+ "title": "List Coloring and $n$-monophilic graphs",
+ "authors": [
+  "Radoslav Kirov",
+  "Ramin Naimi"
+ ],
+ "year": 2010,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1004.5183"
+ },
+ "formalisations": [
+  {
+   "repository": "rkirov/enumerative-chromatic-choosability",
+   "commit": "8ff0d3b3105639892df822eab18d4786c9fdbf25",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2001.06005",
+ "title": "Elements of Scheduling",
+ "authors": [
+  "Jan Karel Lenstra",
+  "David B. Shmoys"
+ ],
+ "year": 2020,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2001.06005"
+ },
+ "formalisations": [
+  {
+   "repository": "JD-Jones-ASES/graham-lpt-lean",
+   "commit": "c8ed035b407cc554faf4b68df0cf3edc70058977",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

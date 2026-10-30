@@ -1,0 +1,29 @@
+{
+ "id": "arxiv:2609.24931",
+ "title": "A Proof of the Most Informative Boolean Function Conjecture",
+ "authors": [
+  "Zijie Chen",
+  "Amin Gohari",
+  "Adel Javanmard",
+  "Honghao Lin",
+  "Vahab Mirrokni",
+  "Chandra Nair",
+  "David P. Woodruff"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.24931"
+ },
+ "formalisations": [
+  {
+   "repository": "dpwoodru/general-courtade-kumar-lean",
+   "commit": "68cd46b433a1003f06a5c3ee39df2af1a4a314e1",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

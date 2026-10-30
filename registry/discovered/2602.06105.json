@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2602.06105",
+ "title": "Robustness Verification of Polynomial Neural Networks",
+ "authors": [
+  "Yulia Alexandr",
+  "Hao Duan",
+  "Guido Montúfar"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2602.06105"
+ },
+ "formalisations": [
+  {
+   "repository": "AIQ-Kitware/aiq-veristressgt-formalization",
+   "commit": "9cee3d9ebfcb42e9a7d7220683eb4969a2b3b31b",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

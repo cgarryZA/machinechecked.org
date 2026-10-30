@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2608.23777",
+ "title": "An Explicit Counterexample to the Rank-Two Poisson Conjecture",
+ "authors": [
+  "Christopher D. Long"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.23777"
+ },
+ "formalisations": [
+  {
+   "repository": "zblore/fc-poisson-2",
+   "commit": "4d85fa884e519c4e992ed54c9bd0ff2846cd9dd1",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

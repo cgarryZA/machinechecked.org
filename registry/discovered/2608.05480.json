@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2608.05480",
+ "title": "Modularity of Point Counts for the Curves $X^a=Y^b$: New Rogers--Ramanujan Identities",
+ "authors": [
+  "Kenny Lau",
+  "Ken Ono"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.05480"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/RR_a3",
+   "commit": "a732b1a5e38bba7af39a344ed627f903c79b0ba0",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

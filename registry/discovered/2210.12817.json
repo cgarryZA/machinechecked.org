@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2210.12817",
+ "title": "The Point-Boundary Art Gallery Problem is $\\exists\\mathbb{R}$-hard",
+ "authors": [
+  "Jack Stade"
+ ],
+ "year": 2022,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2210.12817"
+ },
+ "formalisations": [
+  {
+   "repository": "RBarish-UTokyo/ArtGalleryProblem-ExistsR-Lean4",
+   "commit": "7bfe29cbdad3b057fc5e83397973d554773282e6",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

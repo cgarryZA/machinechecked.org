@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2608.01011",
+ "title": "Complete Existence Classification of Seven-Partite Absolutely Maximally Entangled States",
+ "authors": [
+  "Fei Shi",
+  "Xiande Zhang",
+  "Qi Zhao",
+  "Lvzhou Li"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.01011"
+ },
+ "formalisations": [
+  {
+   "repository": "zblore/fc-ame-7",
+   "commit": "cf65a3b902a94583dc03012bc191ae1b1b1cfc46",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  }
+ ]
+}

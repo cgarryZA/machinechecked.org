@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:2608.19773",
+ "title": "Non-persistence of equality between chromatic polynomials and list-color functions",
+ "authors": [
+  "Meiqiao Zhang",
+  "Fengming Dong"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2608.19773"
+ },
+ "formalisations": [
+  {
+   "repository": "rkirov/enumerative-chromatic-choosability",
+   "commit": "8ff0d3b3105639892df822eab18d4786c9fdbf25",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}

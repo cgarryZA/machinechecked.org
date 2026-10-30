@@ -1,0 +1,24 @@
+{
+ "id": "arxiv:1307.0600",
+ "title": "Moments and growth indices for the nonlinear stochastic heat equation with rough initial conditions",
+ "authors": [
+  "Le Chen",
+  "Robert C. Dalang"
+ ],
+ "year": 2013,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1307.0600"
+ },
+ "formalisations": [
+  {
+   "repository": "chenle02/chen-dalang-2015-moments-lean",
+   "commit": "e26ac0b17ca76bafd212aa2d6d8c462d7a862380",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "unchecked"
+  }
+ ]
+}

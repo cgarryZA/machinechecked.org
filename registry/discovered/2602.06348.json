@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2602.06348",
+ "title": "Adversarial Learning in Games with Bandit Feedback: Logarithmic Pure-Strategy Maximin Regret",
+ "authors": [
+  "Shinji Ito",
+  "Haipeng Luo",
+  "Arnab Maiti",
+  "Taira Tsuchiya",
+  "Yue Wu"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2602.06348"
+ },
+ "formalisations": [
+  {
+   "repository": "RemyDegenne/Ito2026Adversarial",
+   "commit": "e691a354cf2827791f8296a8a388e56793f7611e",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   }
+  }
+ ]
+}

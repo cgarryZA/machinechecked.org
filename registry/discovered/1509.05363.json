@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:1509.05363",
+ "title": "The Erdos discrepancy problem",
+ "authors": [
+  "Terence Tao"
+ ],
+ "year": 2015,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1509.05363"
+ },
+ "formalisations": [
+  {
+   "repository": "ProofFleet/prooffleet",
+   "commit": "9f6f78688f83561d04616ab88e93b9cf81531e47",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

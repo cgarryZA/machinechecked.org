@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2605.28781",
+ "title": "The sum-product conjecture is false for real numbers",
+ "authors": [
+  "Thomas F Bloom",
+  "Will Sawin",
+  "Carl Schildkraut",
+  "Dmitrii Zhelezov"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2605.28781"
+ },
+ "formalisations": [
+  {
+   "repository": "mathlib-initiative/sum_product",
+   "commit": "80e4127a67742659d521466204c6d2d7e0ca2b3f",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed; agent-audited"
+  }
+ ]
+}

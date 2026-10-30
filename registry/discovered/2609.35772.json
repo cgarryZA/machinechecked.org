@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2609.35772",
+ "title": "A density deficit for sums of three cube-full numbers",
+ "authors": [
+  "Basile Beyer de Ryke"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2609.35772"
+ },
+ "formalisations": [
+  {
+   "repository": "plasma-ai/erdos-940",
+   "commit": "491733e396424cc681ef439af0536bc08d15fde7",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

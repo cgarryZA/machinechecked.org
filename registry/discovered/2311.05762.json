@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2311.05762",
+ "title": "On a conjecture of Marton",
+ "authors": [
+  "W. T. Gowers",
+  "Ben Green",
+  "Freddie Manners",
+  "Terence Tao"
+ ],
+ "year": 2023,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2311.05762"
+ },
+ "formalisations": [
+  {
+   "repository": "teorth/pfr",
+   "commit": "7e7fadf0c4d000fdb21b68505f3fd0e29a6e4a2f",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

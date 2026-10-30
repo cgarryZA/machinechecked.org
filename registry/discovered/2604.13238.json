@@ -1,0 +1,32 @@
+{
+ "id": "arxiv:2604.13238",
+ "title": "A quadratic form generalization of rational dinv",
+ "authors": [
+  "Yifeng Huang"
+ ],
+ "year": 2026,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2604.13238"
+ },
+ "formalisations": [
+  {
+   "repository": "AxiomMath/quadratic-dinv",
+   "commit": "0cf4aefe1accd06a1a862fad2b7bcd7af914728d",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "author-verified"
+  },
+  {
+   "repository": "Flaman55/NumericalSemigroups",
+   "commit": "065da5921db2e11f76b3007df9aed0af5a00b267",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}
