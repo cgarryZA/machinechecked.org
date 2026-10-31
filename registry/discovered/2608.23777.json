@@ -12,7 +12,7 @@
  "formalisations": [
   {
    "repository": "zblore/fc-poisson-2",
-   "commit": "4d85fa884e519c4e992ed54c9bd0ff2846cd9dd1",
+   "commit": "aa723b8e6d5d5fcc8b87ea7116816c0f29ed6312",
    "stated_by": {
     "source": "formalization.yaml",
     "file": "formalization.yaml"
