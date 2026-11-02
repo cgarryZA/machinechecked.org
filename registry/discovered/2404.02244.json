@@ -1,0 +1,26 @@
+{
+ "id": "arxiv:2404.02244",
+ "title": "Marton's Conjecture in abelian groups with bounded torsion",
+ "authors": [
+  "W. T. Gowers",
+  "Ben Green",
+  "Freddie Manners",
+  "Terence Tao"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2404.02244"
+ },
+ "formalisations": [
+  {
+   "repository": "teorth/pfr",
+   "commit": "7e7fadf0c4d000fdb21b68505f3fd0e29a6e4a2f",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

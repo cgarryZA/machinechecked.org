@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:2411.19826",
+ "title": "Optimality of Gerver's Sofa",
+ "authors": [
+  "Jineon Baek"
+ ],
+ "year": 2024,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2411.19826"
+ },
+ "formalisations": [
+  {
+   "repository": "deancureton/MovingSofa",
+   "commit": "4d5569131940815f47a9ccf3e90a4c5043c56127",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}
