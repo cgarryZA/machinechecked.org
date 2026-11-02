@@ -52,8 +52,9 @@ npm install --no-save playwright@1.56.1 && node tests/site.test.mjs _site
 The `Site` workflow tests and builds each pull request, then deploys `main` to GitHub Pages.
 Browser tests cover project switching, a paper page with a published audit (statuses, deep links,
 exact places), a paper's versions (a page each, the drop-down between them, and each claim's link
-to what it became in the other version, at desktop and phone widths), audit import errors,
-catalogue queries and filters,
+to what it became in the other version, at desktop and phone widths), each audit's semantic
+summary in the Formalisations dialog (as its export gives it, with each count opening that
+audit's filtered Overview), audit import errors, catalogue queries and filters,
 external search failures and cancellation, and responsive homepage previews.
 Synthetic fixtures exercise the current data contract; older data requests an audit rebuild.
 
@@ -173,8 +174,9 @@ new release, or was written again for the same release, also at an unchanged pro
 (`follow.publication`). An audit exported again with other readings or reviews is such a
 publication, so its new semantic summary is shown after the rebuild. If the check cannot run, the
 workflow fails and starts no rebuild. To test an unreleased commit, pin the commit by hand.
-The semantic summary is shown once `TOOL_VERSION` pins a release that reads it; its tests
-(`tests/test_audit_summaries.py`) run when the installed package does.
+The pinned release reads the semantic summary. `tests/test_audit_summaries.py` checks it on the
+static page and in the snapshot (its counts when the installed package reads the summary), and
+`tests/site.test.mjs` checks it in the pinned reader.
 
 The landing page's screenshots (`site/preview-*.webp`) are made by `scripts/site_preview.mjs` from
 the built site's reader and an exported audit; how to run it is at the top of the script.

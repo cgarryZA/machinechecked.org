@@ -9,9 +9,11 @@
 // claim's link to what it became in the other version), a paper whose one audit read another
 // PDF than arXiv's (shown at the audited version), a paper with no audit, a paper page with a
 // published audit (a synthetic export of the toy paper, tests/fixtures/paper-audit/, joined by
-// the site's own build code), and audits opened in the reader from their data: the toy audit as
-// this version exports it is the demo's; an export frozen from an older version (tests/fixtures/)
-// must keep opening.
+// the site's own build code), a paper whose audits export semantic summaries
+// (tests/fixtures/semantic-audit/: each summary in the Formalisations dialog as exported, and
+// each count's link to that audit's filtered Overview), and audits opened in the reader from
+// their data: the toy audit as this version exports it is the demo's; an export frozen from an
+// older version (tests/fixtures/) must keep opening.
 
 import { chromium } from "playwright";
 import http from "node:http";
@@ -166,6 +168,46 @@ const oneServer = http.createServer((req, res) => {
 }).listen(0);
 const oneOrigin = `http://127.0.0.1:${oneServer.address().port}`;
 const oneIndex = JSON.parse(fs.readFileSync(path.join(one_site, "papers", "2601.00001", "data", "index.json")));
+
+// A paper whose one repository has three audits, each with its semantic summary (#32), built by
+// the site's own code from a snapshot of the exported audits in tests/fixtures/semantic-audit/
+// (see tests/test_audit_summaries.py): A and B as exported, and C, A's export with a summary
+// that names another release than its audit. Served at the root of its own origin, with its
+// reader at /read/; the audits themselves are served at their addresses by the browser check.
+const semanticFixtures = path.join(fixtures, "semantic-audit");
+const C_URL = "https://audit.example/even-sums/c/";
+const summarised_site = fs.mkdtempSync(path.join(os.tmpdir(), "mc-site-summaries-"));
+const summarisedBuild = spawnSync(process.env.PYTHON || "python3", ["-c", `
+import shutil, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, sys.argv[2]); sys.path.insert(0, sys.argv[3])
+import build, claims, prepare
+import test_audit_summaries as t
+from test_snapshot import registry
+out, reader, c_url = Path(sys.argv[1]), Path(sys.argv[4]), sys.argv[5]
+work = Path(tempfile.mkdtemp())
+shutil.copytree(t.FIXTURES / "a", work / "c")
+t.edit_index(work / "c", lambda idx: idx["semantic"]["audit"].update(release="v-another"))
+roots = {t.A_URL: t.FIXTURES / "a", t.B_URL: t.FIXTURES / "b", c_url: work / "c"}
+def fetch(url, limit=100_000_000, headers=None):
+    for base, root in roots.items():
+        if url.startswith(base) and (root / url[len(base):]).is_file():
+            return (root / url[len(base):]).read_bytes()
+    raise OSError("offline")
+claims.fetch, claims.alignment = fetch, lambda r, c: None
+prepare.prepare(registry(work, t.paper(t.A, t.B, (c_url, "A. Auditor"))), work / "snapshot", None,
+                log=lambda m: None)
+build.build(out, reader, work / "snapshot")
+`, summarised_site, path.join(here, "..", "scripts"), here, path.join(site, "read"), C_URL], { encoding: "utf8" });
+if (summarisedBuild.status !== 0) throw new Error(summarisedBuild.stderr);
+const summarisedServer = http.createServer((req, res) => {
+  let p = path.join(summarised_site, decodeURIComponent(req.url.split("?")[0]));
+  if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, "index.html");
+  if (!p.startsWith(summarised_site) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { "content-type": types[path.extname(p)] || "application/octet-stream" });
+  fs.createReadStream(p).pipe(res);
+}).listen(0);
+const summarisedOrigin = `http://127.0.0.1:${summarisedServer.address().port}`;
 
 // The paper pages, from the data written beside each.
 const pages = fs.readdirSync(path.join(site, "papers"), { withFileTypes: true })
@@ -364,6 +406,112 @@ for (const width of [1300, 390]) await check(`a paper whose one audit read anoth
   assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
 });
 
+// Each listed audit's semantic summary (#32), in the pinned reader's Formalisations dialog: the
+// counts its export gives, unit by unit, as the static page shows them, each linked to that
+// audit's Overview filtered to the claims it counts; a summary the site could not show says why,
+// under its audit's link.
+await check("each listed audit shows the semantic summary it exports, linked to its Overview", async (pg) => {
+  await pg.route("https://paper.example/**", (r) => r.fulfill({ path: path.join(semanticFixtures, "a", "data", "papers", "P.pdf"), contentType: "application/pdf" }));
+  await pg.route("https://audit.example/even-sums/**", (r) => {
+    const p = path.join(semanticFixtures, new URL(r.request().url()).pathname.slice("/even-sums/".length));
+    if (!p.startsWith(semanticFixtures + path.sep) || !fs.existsSync(p)) return r.fulfill({ status: 404 });
+    return r.fulfill({ path: p, contentType: types[path.extname(p)] || "application/octet-stream",
+      headers: { "access-control-allow-origin": "*" } });
+  });
+  const exported = (name) => JSON.parse(fs.readFileSync(path.join(semanticFixtures, name, "data", "index.json"))).semantic;
+  const PARAM = { coverage: "coverage", basis: "basis", review: "review", findings: "finding" };
+  // Where a link leads: the page, the audit it opens, and the reader's route and filters.
+  const target = (href) => {
+    const u = new URL(href, summarisedOrigin), [route, query] = u.hash.slice(1).split("?");
+    return { page: u.pathname, audit: u.searchParams.get("audit"), route, filters: Object.fromEntries(new URLSearchParams(query || "")) };
+  };
+  await pg.goto(`${summarisedOrigin}/papers/even-sums/`);
+  await pg.waitForSelector("nav.toc li", { state: "attached" });
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  const panel = pg.locator(".info-dialog[open] .info");
+  await panel.locator(".semantic").first().waitFor();
+  assert.equal(await panel.locator(".semantic").count(), 2);
+  const audits = [["a", "https://audit.example/even-sums/a/", "A. Auditor"], ["b", "https://audit.example/even-sums/b/", "B. Auditor"]];
+  const links = [];
+  for (const [name, url, author] of audits) {
+    const s = exported(name), block = s.papers.P, release = s.audit.release;
+    const sum = panel.locator(`.semantic[data-audit="${url}"]`);
+    assert.equal(await sum.getAttribute("data-digest"), s.digest);
+    // Under its own audit's line, which names its author.
+    const [opens, says] = await sum.evaluate((el) => [el.previousElementSibling.querySelector("a").getAttribute("href"), el.previousElementSibling.textContent]);
+    assert.equal(opens, "/read/?audit=" + encodeURIComponent(url));
+    assert.ok(says.includes(`by ${author}`), says);
+    // Every positive count of the export, and nothing else: the selected readings' correspondence
+    // and evidence basis, and the reviews and findings, for each unit with claims.
+    const want = [];
+    for (const unit of ["statements", "notation", "proof_steps"]) {
+      if (!(block.inventory[unit].records > 0)) continue;
+      for (const [dim, table] of [["coverage", block.coverage[s.selected][unit]], ["basis", block.basis[s.selected][unit]],
+                                  ["review", block.review[unit]], ["findings", block.findings[unit]]]) {
+        for (const [key, n] of Object.entries(table)) if (n > 0) want.push([unit, dim, key, n]);
+      }
+    }
+    const shown = await sum.locator(".unit [data-dimension] a").evaluateAll((as) => as.map((a) => ({
+      unit: a.closest(".unit").dataset.unit, dim: a.closest("[data-dimension]").dataset.dimension,
+      key: a.dataset.key, text: a.textContent, href: a.getAttribute("href") })));
+    const key = ([unit, dim, k, n]) => `${unit} ${dim} ${k} ${n}`;
+    assert.deepEqual(shown.map((x) => key([x.unit, x.dim, x.key, Number(x.text.match(/\((\d+)\)$/)?.[1])])).sort(), want.map(key).sort());
+    for (const x of shown) {
+      assert.deepEqual(target(x.href), { page: "/read/", audit: url, route: `/r/${release}/overview`,
+        filters: { set: s.selected, unit: x.unit, [PARAM[x.dim]]: x.key } });
+      links.push({ url, digest: s.digest, href: x.href, dim: x.dim, key: x.key, n: Number(x.text.match(/\((\d+)\)$/)[1]) });
+    }
+    // The static page shows the same summary: its words, counts and links.
+    const plainPage = pg.locator(`.wrap .semantic[data-digest="${s.digest}"]`);
+    assert.equal(await plainPage.locator("p").first().textContent(), (await sum.locator("p").first().textContent()).trim());
+    assert.deepEqual((await plainPage.locator("ul strong").allTextContents()).map((t) => t.replace(/\.$/, "")),
+      (await sum.locator(".unit .head").allTextContents()).map((t) => t.trim()));
+    const pairs = (as) => as.map((a) => [a.textContent, a.getAttribute("href")]);
+    assert.deepEqual((await plainPage.locator("ul a").evaluateAll(pairs)).map(([t, h]) => [t, target(h)]),
+      shown.map((x) => [x.text, target(x.href)]));
+    // Other sets of readings are linked, counted apart.
+    const others = s.sets.filter((o) => o.id !== s.selected);
+    const apart = await sum.locator(".others a").evaluateAll(pairs);
+    assert.deepEqual(apart.map(([, h]) => target(h)), others.map((o) => ({ page: "/read/", audit: url, route: `/r/${release}/overview`, filters: { set: o.id, unit: "statements" } })));
+    assert.deepEqual((await plainPage.locator("p a").evaluateAll(pairs)).map(([t, h]) => [t, target(h)]),
+      apart.map(([t, h]) => [t, target(h)]));
+    for (const [, h] of apart) links.push({ url, digest: s.digest, href: h, set: target(h).filters.set });
+  }
+  assert.ok(links.some((l) => l.set), "a set of readings counted apart");
+  // The reviewed composition is a basis of statements counted under one correspondence, never a
+  // correspondence of its own; unresolved and not assessed are counted apart.
+  const a = panel.locator('.semantic[data-audit="https://audit.example/even-sums/a/"] .unit[data-unit="statements"]');
+  assert.equal(await a.locator('[data-dimension="basis"] a[data-key="reviewed_composition"]').count(), 1);
+  assert.equal(await a.locator('[data-dimension="coverage"] a[data-key="reviewed_composition"]').count(), 0);
+  assert.equal(await a.locator('[data-dimension="coverage"] a[data-key="unresolved"]').count(), 1);
+  assert.equal(await a.locator('[data-dimension="coverage"] a[data-key="not_assessed"]').count(), 1);
+  // C's summary names another release than its audit: it says so under C's own link, with no count.
+  const c = panel.locator(`.semantic-state[data-audit="${C_URL}"]`);
+  assert.equal(await c.getAttribute("data-state"), "incompatible");
+  assert.equal((await c.textContent()).trim(), "Semantic summary incompatible: The summary names another release than its audit.");
+  assert.equal(await c.evaluate((el) => el.previousElementSibling.querySelector("a").getAttribute("href")), "/read/?audit=" + encodeURIComponent(C_URL));
+  assert.match(await pg.locator(".wrap").innerHTML(), /Semantic summary incompatible: The summary names another release than its audit\./);
+  await pg.getByRole("button", { name: "Close formalisations" }).click();
+  // Each count's link, opened as from the paper's page, opens its audit's own Overview, with the
+  // same summary, on the claims it counts.
+  for (const l of links) {
+    await pg.goto("about:blank");
+    await pg.goto(new URL(l.href, summarisedOrigin).href);
+    const overview = pg.locator(`.coverage .semantic[data-digest="${l.digest}"]`);
+    await overview.waitFor();
+    if (l.set) {
+      assert.equal(await pg.locator(".coverage .readings select").inputValue(), l.set);
+      continue;
+    }
+    await pg.locator(".coverage .count").filter({ hasText: new RegExp(`^${l.n} claims?\\b`) }).waitFor();
+    const listed = pg.locator(".coverage .claims li");
+    assert.equal(await listed.count(), l.n, `${l.href}`);
+    if (l.dim !== "findings") {
+      assert.deepEqual(await listed.evaluateAll((lis, d) => lis.map((li) => li.dataset[d]), l.dim), Array(l.n).fill(l.key), `${l.href}`);
+    }
+  }
+});
+
 const plain = pages.find((p) => !audited(p) && p.index.claims.length);
 await check(`a paper with no audit (${plain?.slug})`, async (pg) => {
   assert.ok(plain, "no listed paper without an audit has statements found in its PDF");
@@ -450,8 +598,10 @@ await browser.close();
 server.close();
 versionedServer.close();
 oneServer.close();
+summarisedServer.close();
 fs.rmSync(versioned_site, { recursive: true, force: true });
 fs.rmSync(one_site, { recursive: true, force: true });
+fs.rmSync(summarised_site, { recursive: true, force: true });
 fs.rmSync(synthetic, { recursive: true, force: true });
 fs.rmSync(audited_site, { recursive: true, force: true });
 if (failures) {
