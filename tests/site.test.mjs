@@ -370,7 +370,10 @@ await check(`a paper with no audit (${plain?.slug})`, async (pg) => {
   await pg.goto(`${origin}/papers/${plain.slug}/`);
   await pg.waitForSelector("nav.toc li");
   assert.equal(await pg.locator(".reader-layout > nav.toc li").count(), plain.index.claims.length);
-  assert.match(await pg.locator("body").textContent(), /No claim-level audit is published yet/);
+  // Formalisations, a dialog opened from its button, says that no audit is published.
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  assert.match(await pg.locator(".info-dialog[open] .info-body").textContent(), /No claim-level audit is published yet/);
+  await pg.getByRole("button", { name: "Close formalisations" }).click();
   // Without an audit nothing says what Lean establishes.
   assert.doesNotMatch(await pg.locator(".reader-layout > nav.toc").innerHTML(), /st-(proved|accepted)/);
 });
