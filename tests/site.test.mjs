@@ -220,7 +220,7 @@ await check("a paper page shows its published audit's statuses at the canonical 
 await check("a deep link to an audited claim opens the audit's record at its exact place", async (pg) => {
   const claim = toyIndex.claims.find((c) => c.status_code === "formal.accepted");
   await pg.goto(`${origin}/audited/papers/toy-paper/#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
-  const side = pg.locator(".reader-layout > aside.side");
+  const side = pg.locator(".reader-layout > .claim-view");
   await side.getByText(claim.number, { exact: false }).first().waitFor();
   // The audit's record of the claim, at the audited revision and its exact place.
   const text = await side.textContent();
@@ -251,7 +251,7 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   if (width > 700) await pg.locator(".pdf .page canvas").first().waitFor();
   // The panel names each audit's version and commit: this version's audit is the action, and the
   // other version's audit links to its page (#42).
-  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
   const card = pg.locator(".info .card");
   await card.waitFor();
   const commit = versionIndex("").audits["cgarryZA/MachineChecked"].commit.slice(0, 12);
@@ -259,7 +259,7 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   assert.match(await card.locator(".audit.here").textContent(), new RegExp(`by A\\. Author · commit ${commit}`));
   assert.deepEqual((await card.locator(".elsewhere a").allTextContents()).map((t) => t.trim()), ["Latest manuscript (commit 956fe0b)"]);
   assert.equal(new URL(await card.locator(".elsewhere a").getAttribute("href")).pathname, "/papers/2601.00001/manuscript-956fe0b/");
-  if (width <= 1180) await pg.locator(".side-head .x").click();
+  await pg.getByRole("button", { name: "Close formalisations" }).click();
   // Choosing the manuscript opens its page, with the chosen formalisation and without a claim.
   await Promise.all([pg.waitForURL(/manuscript-956fe0b/), select.selectOption("manuscript:956fe0b")]);
   const url = new URL(pg.url());
@@ -268,11 +268,11 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   await pg.locator("select[aria-label='Paper version shown']").waitFor();
   assert.equal(await pg.locator("select[aria-label='Paper version shown']").inputValue(), "manuscript:956fe0b");
   await pg.waitForSelector("nav.toc li", { state: "attached" });
-  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
   await pg.locator(".info .card").waitFor();
   assert.deepEqual((await pg.locator(".info .audit.here .btn").allTextContents()).map((t) => t.trim()), ["Open the audit of Latest manuscript (commit 956fe0b)"]);
   assert.deepEqual((await pg.locator(".info .elsewhere a").allTextContents()).map((t) => t.trim()), ["arXiv v1"]);
-  if (width <= 1180) await pg.locator(".side-head .x").click();
+  await pg.getByRole("button", { name: "Close formalisations" }).click();
   // Each version's page keeps its own audit's statuses.
   if (width > 700) assert.deepEqual(await statuses(), expected("manuscript-956fe0b"));
   // The manuscript is shown from the PDF its audit carries, the audit's claims at their exact
@@ -284,7 +284,7 @@ for (const width of [1300, 390]) await check(`a paper's versions, each on its ow
   // A deep link to a claim opens it in its own version's page.
   const claim = versionIndex("manuscript-956fe0b").claims.find((c) => c.status_code === "formal.accepted");
   await pg.goto(`${versionedOrigin}/papers/2601.00001/manuscript-956fe0b/#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
-  await pg.locator(".reader-layout > aside.side").getByText(claim.number, { exact: false }).first().waitFor();
+  await pg.locator(".reader-layout > .claim-view").getByText(claim.number, { exact: false }).first().waitFor();
   assert.equal(await pg.locator("select[aria-label='Paper version shown']").inputValue(), "manuscript:956fe0b");
   assert.ok(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await pg.screenshot({ path: path.join(process.env.SHOTS, `versions-${width}.png`) }); }
@@ -294,7 +294,7 @@ for (const width of [1300, 390]) await check(`a claim links to what it became in
   await pg.setViewportSize({ width, height: 900 });
   await pg.route("https://arxiv.org/**", (r) => r.fulfill({ path: path.join(fixtures, "paper-audit", "toy", "data", "papers", "T.pdf"), contentType: "application/pdf" }));
   const v1 = versionIndex("v1"), latest = versionIndex("manuscript-956fe0b");
-  const side = pg.locator(".reader-layout > aside.side");
+  const side = pg.locator(".reader-layout > .claim-view");
   const open = async (dir, claim) => {
     await pg.goto(`${versionedOrigin}/papers/2601.00001/${dir}#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
     await side.getByText(claim.number, { exact: false }).first().waitFor();
@@ -349,14 +349,14 @@ for (const width of [1300, 390]) await check(`a paper whose one audit read anoth
   }
   // One version: no drop-down; the panel names the version the audit pins.
   assert.equal(await pg.locator("select[aria-label='Paper version shown']").count(), 0);
-  if (width <= 1180) await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
   await pg.locator(".info .card").waitFor();
   assert.deepEqual((await pg.locator(".info .audit.here .btn").allTextContents()).map((t) => t.trim()),
     ["Open the audit of Latest manuscript (commit 956fe0b)"]);
   // A claim opens at the audit's exact place.
   const claim = oneIndex.claims.find((c) => c.status_code === "formal.accepted");
   await pg.goto(`${oneOrigin}/papers/2601.00001/#/r/paper/read/P/${encodeURIComponent(claim.id)}`);
-  const side = pg.locator(".reader-layout > aside.side");
+  const side = pg.locator(".reader-layout > .claim-view");
   await side.getByText(claim.number, { exact: false }).first().waitFor();
   const text = await side.textContent();
   assert.match(text, /exact location/);
@@ -370,7 +370,10 @@ await check(`a paper with no audit (${plain?.slug})`, async (pg) => {
   await pg.goto(`${origin}/papers/${plain.slug}/`);
   await pg.waitForSelector("nav.toc li");
   assert.equal(await pg.locator(".reader-layout > nav.toc li").count(), plain.index.claims.length);
-  assert.match(await pg.locator("body").textContent(), /No claim-level audit is published yet/);
+  // Formalisations, a dialog opened from its button, says that no audit is published.
+  await pg.locator(".reader-tools button", { hasText: "Formalisations" }).click();
+  assert.match(await pg.locator(".info-dialog[open] .info-body").textContent(), /No claim-level audit is published yet/);
+  await pg.getByRole("button", { name: "Close formalisations" }).click();
   // Without an audit nothing says what Lean establishes.
   assert.doesNotMatch(await pg.locator(".reader-layout > nav.toc").innerHTML(), /st-(proved|accepted)/);
 });

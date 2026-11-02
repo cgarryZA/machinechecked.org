@@ -39,7 +39,7 @@ const index = JSON.parse(fs.readFileSync(path.join(audit, "data", "index.json"))
 const claim = process.env.CLAIM || "T:thm:even-add";
 const paper = index.papers[0].id;
 const url = `http://127.0.0.1:${port}/#/r/${encodeURIComponent(index.release)}/read/` +
-  `${encodeURIComponent(paper)}/${encodeURIComponent(claim)}?compare=1`;
+  `${encodeURIComponent(paper)}/${encodeURIComponent(claim)}`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 fs.mkdirSync(out, { recursive: true });
