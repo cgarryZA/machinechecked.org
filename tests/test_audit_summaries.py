@@ -21,6 +21,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import parse_qs
 
 import pytest
 
@@ -286,12 +287,32 @@ def test_two_audits_of_one_repository_keep_their_own_summaries(served):
 
 @needs_summary_support
 def test_strings_of_a_summary_are_escaped(served):
-    edit_index(served[B_URL], lambda idx: idx["semantic"]["sets"][1]["reviewer"].update(
-        name='<script>alert("x")</script>'))
+    """A reviewer's name, the authors of the readings and the identifier of a set of readings are
+    the audit's own strings: each is escaped on the page, and a set's identifier stays one filter
+    of the link into that audit's Overview."""
+    odd = 'review:x&unit=notation#"><b>'
+
+    def change(idx):
+        s = idx["semantic"]
+        s["sets"][0]["by"] = ["<img src=x onerror=alert(1)>"]
+        s["sets"][1]["reviewer"]["name"] = '<script>alert("x")</script>'
+        old, s["sets"][1]["id"] = s["sets"][1]["id"], odd
+        for table in ("coverage", "basis", "currency"):
+            s["papers"]["P"][table][odd] = s["papers"]["P"][table].pop(old)
+    edit_index(served[B_URL], change)
     p = paper(B)
     labelled(p)
     [line] = lines(papers.paper_page(p))
     assert "<script>" not in line and "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;" in line
+    assert "<img" not in line and "by &lt;img src=x onerror=alert(1)&gt;" in line
+    assert "<b>" not in line
+    # The link to the reviewer's readings opens B's Overview, filtered to that set and unit only.
+    href = html.unescape(re.search(r'Counted apart: <a href="([^"]*)"', line)[1])
+    page, fragment = href.split("#", 1)
+    route, query = fragment.split("?", 1)
+    assert page == papers.reader_url(B_URL)
+    assert route == f"/r/{exported('b')['audit']['release']}/overview"
+    assert parse_qs(query, strict_parsing=True) == {"set": [odd], "unit": ["statements"]}
 
 
 @needs_summary_support
