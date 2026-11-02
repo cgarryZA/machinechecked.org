@@ -74,5 +74,5 @@ jobs:
           git push -q origin "$branch"
           gh pr create --head "$branch" --title "Reader: MachineChecked $V" --body "Pins the reader to MachineChecked $V (https://pypi.org/project/machinechecked/$V/), released after the version this site pins now.
 
-          The Site workflow is running on this branch: it builds the site with $V and tests it in a browser (tests/site.test.mjs: a paper with two formalisations, a paper with no audit, an audit exported by an older version, the demo). It does not deploy; merging does. Check that run before merging."
+          The Site workflow is running on this branch: it builds the site with $V and tests it in a browser (tests/site.test.mjs: a paper with two formalisations, a paper with no audit, the audits' exported semantic summaries, an audit exported by an older version, the demo). It does not deploy; merging does. Check that run before merging."
           gh workflow run pages.yml --ref "$branch"
