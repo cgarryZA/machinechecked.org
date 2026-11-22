@@ -1,0 +1,25 @@
+{
+ "id": "arxiv:2501.03970",
+ "title": "A Constructive Approach to Zauner's Conjecture via the Stark Conjectures",
+ "authors": [
+  "Marcus Appleby",
+  "Steven T Flammia",
+  "Gene S Kopp"
+ ],
+ "year": 2025,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2501.03970"
+ },
+ "formalisations": [
+  {
+   "repository": "marozols/SIC-existence",
+   "commit": "91e3a438beb8dd4f580fd56195479981f0db49bd",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "self-assessed"
+  }
+ ]
+}

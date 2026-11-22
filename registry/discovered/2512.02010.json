@@ -1,0 +1,32 @@
+{
+ "id": "arxiv:2512.02010",
+ "title": "Four Over Six: More Accurate NVFP4 Quantization with Adaptive Block Scaling",
+ "authors": [
+  "Jack Cook",
+  "Junxian Guo",
+  "Guangxuan Xiao",
+  "Yujun Lin",
+  "Keith Wyss",
+  "Mahdi Nazemi",
+  "Asit Mishra",
+  "Carlo del Mundo",
+  "Tijmen Blankevoort",
+  "Song Han"
+ ],
+ "year": 2025,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/2512.02010"
+ },
+ "formalisations": [
+  {
+   "repository": "lean-dojo/FloatLib",
+   "commit": "d24844f039320a024c7548f992920562d9a71a60",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "Locally checked"
+  }
+ ]
+}

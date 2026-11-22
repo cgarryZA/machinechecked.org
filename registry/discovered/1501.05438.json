@@ -1,0 +1,23 @@
+{
+ "id": "arxiv:1501.05438",
+ "title": "The ternary Goldbach problem",
+ "authors": [
+  "Harald Andres Helfgott"
+ ],
+ "year": 2015,
+ "listing": "arxiv",
+ "links": {
+  "arxiv": "https://arxiv.org/abs/1501.05438"
+ },
+ "formalisations": [
+  {
+   "repository": "calr3/ternary-goldbach",
+   "commit": "330a61c74684d9da2950697ff068a9965592f3ac",
+   "stated_by": {
+    "source": "formalization.yaml",
+    "file": "formalization.yaml"
+   },
+   "review_status": "agent-reviewed"
+  }
+ ]
+}
